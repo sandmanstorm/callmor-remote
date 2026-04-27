@@ -38,6 +38,8 @@ pub mod flutter;
 pub mod flutter_ffi;
 use common::*;
 mod auth_2fa;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod callmor_heartbeat;
 #[cfg(feature = "cli")]
 pub mod cli;
 #[cfg(not(target_os = "ios"))]
