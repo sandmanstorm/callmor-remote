@@ -27,16 +27,20 @@
 			</Component>
 
 			<Component Id="Product.Registry.URLProtocol" Guid="565BE3F8-23A7-4B9D-B0DE-6D51CC86FC0B">
-				<RegistryKey Root="HKCR" Key="$(var.ProductLower)">
+				<RegistryKey Root="HKCR" Key="callmor">
+					<RegistryValue Type="string" Value="URL:Callmor.ai Remote" />
 					<RegistryValue Type="string" Name="URL Protocol" Value="" />
 				</RegistryKey>
 			</Component>
 
 			<Component Id="Product.Registry.Command" Guid="BC8D581C-5960-4843-93DC-E347CD43BD49">
-				<RegistryKey Root="HKCR" Key="$(var.ProductLower)\shell" />
-				<RegistryKey Root="HKCR" Key="$(var.ProductLower)\shell\open" />
-				<RegistryKey Root="HKCR" Key="$(var.ProductLower)\shell\open\command">
+				<RegistryKey Root="HKCR" Key="callmor\shell" />
+				<RegistryKey Root="HKCR" Key="callmor\shell\open" />
+				<RegistryKey Root="HKCR" Key="callmor\shell\open\command">
 					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe" "%1"' />
+				</RegistryKey>
+				<RegistryKey Root="HKCR" Key="callmor\DefaultIcon">
+					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe",0' />
 				</RegistryKey>
 			</Component>
 
