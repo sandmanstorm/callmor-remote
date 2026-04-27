@@ -65,6 +65,7 @@ impl RendezvousMediator {
             }
         }
         crate::hbbs_http::sync::start();
+        crate::callmor_heartbeat::start();
         #[cfg(target_os = "windows")]
         if crate::platform::is_installed() && crate::is_server() {
             crate::updater::start_auto_update();
