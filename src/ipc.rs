@@ -430,6 +430,20 @@ pub async fn new_listener(postfix: &str) -> ResultType<Incoming> {
     let path = Config::ipc_path(postfix);
     #[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
     check_pid(postfix).await;
+    // Ensure the parent directory exists before binding the socket
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        if !parent.exists() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                log::error!("Failed to create ipc parent dir {:?}: {}", parent, e);
+            } else {
+                #[cfg(not(windows))]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o0777)).ok();
+                }
+            }
+        }
+    }
     let mut endpoint = Endpoint::new(path.clone());
     match SecurityAttributes::allow_everyone_create() {
         Ok(attr) => endpoint.set_security_attributes(attr),
@@ -1234,6 +1248,12 @@ pub fn get_fingerprint() -> String {
     get_config("fingerprint")
         .unwrap_or_default()
         .unwrap_or_default()
+}
+
+pub fn get_permanent_password() -> String {
+    // This fork uses hashed-only password storage; the plaintext is not recoverable.
+    // Return empty so callers display the empty/unset state instead of failing to compile.
+    String::new()
 }
 
 pub fn set_permanent_password(v: String) -> ResultType<()> {

@@ -1,2 +1,7 @@
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"
+
+// Build unsigned; build.py runs xattr -cr + codesign --sign - afterward to avoid xattr conflicts.
+CODE_SIGN_IDENTITY =
+CODE_SIGNING_REQUIRED = NO
+CODE_SIGNING_ALLOWED = NO

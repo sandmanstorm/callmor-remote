@@ -406,9 +406,11 @@ class _DesktopTabState extends State<DesktopTab>
 
   _saveFrame({bool? flush}) async {
     try {
+      // Callmor: never save the main window frame — we always lock it at AppKit.
       if (tabType == DesktopTabType.main) {
-        await saveWindowPosition(WindowType.Main, flush: flush);
-      } else if (kWindowType != null && kWindowId != null) {
+        return;
+      }
+      if (kWindowType != null && kWindowId != null) {
         await saveWindowPosition(kWindowType!,
             windowId: kWindowId, flush: flush);
       }
@@ -640,7 +642,7 @@ class _DesktopTabState extends State<DesktopTab>
                         Offstage(
                             offstage: !showTitle,
                             child: const Text(
-                              "RustDesk",
+                              "Callmor",
                               style: TextStyle(fontSize: 13),
                             ).marginOnly(left: 2))
                       ]).marginOnly(

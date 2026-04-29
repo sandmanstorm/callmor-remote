@@ -128,7 +128,23 @@ pub fn global_init() -> bool {
             crate::server::wayland::init();
         }
     }
+    seed_callmor_server_defaults();
     true
+}
+
+fn seed_callmor_server_defaults() {
+    use hbb_common::config::Config;
+    const SERVER: &str = "remote.callmor.ai";
+    const KEY: &str = "JsAAR1hKXo1+69S7g2szyE0hmdWe3WGgQ2KfjJCYWV4=";
+    if Config::get_option("custom-rendezvous-server").is_empty() {
+        Config::set_option("custom-rendezvous-server".to_string(), SERVER.to_string());
+    }
+    if Config::get_option("relay-server").is_empty() {
+        Config::set_option("relay-server".to_string(), SERVER.to_string());
+    }
+    if Config::get_option("key").is_empty() {
+        Config::set_option("key".to_string(), KEY.to_string());
+    }
 }
 
 pub fn global_clean() {}
@@ -1007,7 +1023,7 @@ pub fn get_app_name() -> String {
 
 #[inline]
 pub fn is_rustdesk() -> bool {
-    hbb_common::config::APP_NAME.read().unwrap().eq("RustDesk")
+    hbb_common::config::APP_NAME.read().unwrap().eq("Callmor.ai Remote")
 }
 
 #[inline]
@@ -1081,13 +1097,13 @@ fn get_api_server_(api: String, custom: String) -> String {
             return format!("http://{}", s);
         }
     }
-    "https://admin.rustdesk.com".to_owned()
+    "https://remote.callmor.ai".to_owned()
 }
 
 #[inline]
 pub fn is_public(url: &str) -> bool {
     let url = url.to_ascii_lowercase();
-    url.contains("rustdesk.com/") || url.ends_with("rustdesk.com")
+    url.contains("callmor.ai/") || url.ends_with("callmor.ai")
 }
 
 pub fn get_udp_punch_enabled() -> bool {
@@ -2282,7 +2298,7 @@ pub fn get_builtin_option(key: &str) -> String {
 
 #[inline]
 pub fn is_custom_client() -> bool {
-    get_app_name() != "RustDesk"
+    get_app_name() != "Callmor"
 }
 
 pub fn verify_login(_raw: &str, _id: &str) -> bool {

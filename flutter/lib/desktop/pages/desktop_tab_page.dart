@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_home_page.dart';
+import 'package:flutter_hbb/desktop/pages/callmor_chat_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
@@ -49,19 +50,40 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
         selectedIcon: Icons.home_sharp,
         unselectedIcon: Icons.home_outlined,
         closable: false,
-        page: DesktopHomePage(
-          key: const ValueKey(kTabLabelHomePage),
+        page: const CallmorChatPage(
+          key: ValueKey(kTabLabelHomePage),
         )));
-    if (bind.isIncomingOnly()) {
-      tabController.onSelected = (key) {
-        if (key == kTabLabelHomePage) {
-          windowManager.setSize(getIncomingOnlyHomeSize());
-          setResizable(false);
-        } else {
-          windowManager.setSize(getIncomingOnlySettingsSize());
-          setResizable(true);
-        }
-      };
+    // Callmor: resize window per tab. tabController.onSelected isn't fired on
+    // tab-add (jumpTo passes callOnSelected:false), so listen to the reactive
+    // `selected` index on the controller's state and react there.
+    tabController.state.listen((s) {
+      if (s.tabs.isEmpty) return;
+      final idx = s.selected.clamp(0, s.tabs.length - 1);
+      final key = s.tabs[idx].key;
+      _resizeForTab(key);
+    });
+    tabController.onSelected = _resizeForTab;
+  }
+
+  bool _initialHomeResizeSkipped = false;
+
+  void _resizeForTab(String key) {
+    if (key == kTabLabelHomePage) {
+      // Skip the first home-tab activation — that fires during initial tabController.add
+      // which races with AppKit's setContentSize and causes a visible flash on launch.
+      if (!_initialHomeResizeSkipped) {
+        _initialHomeResizeSkipped = true;
+        setResizable(false);
+        return;
+      }
+      // Returning to home from Settings: shrink back to chat size.
+      windowManager.setSize(const Size(500, 720));
+      windowManager.center();
+      setResizable(false);
+    } else {
+      windowManager.setSize(const Size(820, 640));
+      windowManager.center();
+      setResizable(true);
     }
   }
 

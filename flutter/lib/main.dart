@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/widgets/overlay.dart';
@@ -154,12 +155,15 @@ void runMainApp(bool startService) async {
   }
 
   // Set window option.
+  // Callmor: size + center are locked at AppKit level (MainFlutterWindow.awakeFromNib)
+  // so we don't pass `size` here — window_manager would otherwise reset it on first paint.
   WindowOptions windowOptions = getHiddenTitleBarWindowOptions(
-      isMainWindow: true, alwaysOnTop: alwaysOnTop);
+      isMainWindow: true,
+      alwaysOnTop: alwaysOnTop);
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    // Restore the location of the main window before window hide or show.
-    await restoreWindowPosition(WindowType.Main);
-    // Check the startup argument, if we successfully handle the argument, we keep the main window hidden.
+    // Callmor: AppKit (MainFlutterWindow.awakeFromNib) already locked the window
+    // size. Don't call setSize/center/restoreWindowPosition here — those raced
+    // with AppKit and caused inconsistent sizes between launches.
     final handledByUniLinks = await initUniLinks();
     debugPrint("handled by uni links: $handledByUniLinks");
     if (handledByUniLinks || handleUriLink(cmdArgs: kBootArgs)) {
@@ -167,14 +171,68 @@ void runMainApp(bool startService) async {
     } else {
       windowManager.show();
       windowManager.focus();
-      // Move registration of active main window here to prevent from async visible check.
       rustDeskWinManager.registerActiveWindow(kWindowMainId);
     }
     windowManager.setOpacity(1);
     windowManager.setTitle(getWindowName());
-    // Do not use `windowManager.setResizable()` here.
-    setResizable(!bind.isIncomingOnly());
+    await _initCallmorTray();
   });
+}
+
+class _CallmorTrayListener with tray.TrayListener {
+  @override
+  void onTrayIconMouseDown() async {
+    await windowManager.show();
+    await windowManager.focus();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() async {
+    await tray.trayManager.popUpContextMenu();
+  }
+
+  @override
+  void onTrayMenuItemClick(tray.MenuItem menuItem) async {
+    switch (menuItem.key) {
+      case 'open':
+        await windowManager.show();
+        await windowManager.focus();
+        break;
+      case 'stop':
+        // Stop the local input server / accept-connections so peers can no
+        // longer connect, but keep the app + heartbeat running.
+        try {
+          await bind.mainSetOption(key: 'stop-service', value: 'Y');
+        } catch (e) {
+          debugPrint('stop-service failed: $e');
+        }
+        break;
+      case 'quit':
+        await tray.trayManager.destroy();
+        await windowManager.setPreventClose(false);
+        await windowManager.destroy();
+        exit(0);
+    }
+  }
+}
+
+final _callmorTrayListener = _CallmorTrayListener();
+
+Future<void> _initCallmorTray() async {
+  if (!isMacOS) return;
+  try {
+    await tray.trayManager.setIcon('assets/icon.png', isTemplate: false);
+    await tray.trayManager.setToolTip('Callmor.ai Remote');
+    await tray.trayManager.setContextMenu(tray.Menu(items: [
+      tray.MenuItem(key: 'open', label: 'Open'),
+      tray.MenuItem(key: 'stop', label: 'Stop service'),
+      tray.MenuItem.separator(),
+      tray.MenuItem(key: 'quit', label: 'Exit'),
+    ]));
+    tray.trayManager.addListener(_callmorTrayListener);
+  } catch (e) {
+    debugPrint('Callmor tray init failed: $e');
+  }
 }
 
 void runMobileApp() async {

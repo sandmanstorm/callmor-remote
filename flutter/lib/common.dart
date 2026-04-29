@@ -251,16 +251,16 @@ class MyTheme {
   MyTheme._();
 
   static const Color grayBg = Color(0xFFEFEFF2);
-  static const Color accent = Color(0xFF0071FF);
-  static const Color accent50 = Color(0x770071FF);
-  static const Color accent80 = Color(0xAA0071FF);
+  static const Color accent = Color(0xFF0F3D92);
+  static const Color accent50 = Color(0x770F3D92);
+  static const Color accent80 = Color(0xAA0F3D92);
   static const Color canvasColor = Color(0xFF212121);
   static const Color border = Color(0xFFCCCCCC);
-  static const Color idColor = Color(0xFF00B6F0);
+  static const Color idColor = Color(0xFFFFC72C);
   static const Color darkGray = Color.fromARGB(255, 148, 148, 148);
-  static const Color cmIdColor = Color(0xFF21790B);
+  static const Color cmIdColor = Color(0xFF0F3D92);
   static const Color dark = Colors.black87;
-  static const Color button = Color(0xFF2C8CFF);
+  static const Color button = Color(0xFF0F3D92);
   static const Color hoverBorder = Color(0xFF999999);
 
   // ListTile
@@ -2365,19 +2365,6 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
     id = uri.path.substring("/new/".length);
   } else if (uri.authority == "config") {
     if (isAndroid || isIOS) {
-      final allowDeepLinkServerSettings =
-          bind.mainGetBuildinOption(key: kOptionAllowDeepLinkServerSettings) ==
-              'Y';
-      if (!allowDeepLinkServerSettings) {
-        debugPrint(
-            "Ignore rustdesk://config because $kOptionAllowDeepLinkServerSettings is not enabled.");
-        // Keep the user-facing error generic; detailed rejection reason is in debug logs.
-        // Delay toast to avoid missing overlay during cold-start deeplink handling.
-        Timer(Duration(seconds: 1), () {
-          showToast(translate('Failed'));
-        });
-        return null;
-      }
       final config = uri.path.substring("/".length);
       // add a timer to make showToast work
       Timer(Duration(seconds: 1), () {
@@ -2387,24 +2374,11 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
     return null;
   } else if (uri.authority == "password") {
     if (isAndroid || isIOS) {
-      final allowDeepLinkPassword =
-          bind.mainGetBuildinOption(key: kOptionAllowDeepLinkPassword) == 'Y';
-      if (!allowDeepLinkPassword) {
-        debugPrint(
-            "Ignore rustdesk://password because $kOptionAllowDeepLinkPassword is not enabled.");
-        // Keep the user-facing error generic; detailed rejection reason is in debug logs.
-        // Delay toast to avoid missing overlay during cold-start deeplink handling.
-        Timer(Duration(seconds: 1), () {
-          showToast(translate('Failed'));
-        });
-        return null;
-      }
       final password = uri.path.substring("/".length);
       if (password.isNotEmpty) {
         Timer(Duration(seconds: 1), () async {
-          final ok =
-              await bind.mainSetPermanentPasswordWithResult(password: password);
-          showToast(translate(ok ? 'Successful' : 'Failed'));
+          await bind.mainSetPermanentPassword(password: password);
+          showToast(translate('Successful'));
         });
       }
     }
@@ -2791,43 +2765,13 @@ bool isRunningInPortableMode() {
 Future<void> onActiveWindowChanged() async {
   print(
       "[MultiWindowHandler] active window changed: ${rustDeskWinManager.getActiveWindows()}");
+  // Callmor: when the main window is hidden (red close), keep the app running
+  // in the menubar. Clean up sub-windows but never call terminate.
   if (rustDeskWinManager.getActiveWindows().isEmpty) {
-    // close all sub windows
     try {
-      if (isLinux) {
-        await Future.wait([
-          saveWindowPosition(WindowType.Main),
-          rustDeskWinManager.closeAllSubWindows()
-        ]);
-      } else {
-        await rustDeskWinManager.closeAllSubWindows();
-      }
+      await rustDeskWinManager.closeAllSubWindows();
     } catch (err) {
       debugPrintStack(label: "$err");
-    } finally {
-      debugPrint("Start closing RustDesk...");
-      await windowManager.setPreventClose(false);
-      await windowManager.close();
-      if (isMacOS) {
-        // If we call without delay, `flutter/macos/Runner/MainFlutterWindow.swift` can handle the "terminate" event.
-        // But the app will not close.
-        //
-        // No idea why we need to delay here, `terminate()` itself is also an async function.
-        //
-        // A quick workaround, use `Timer.periodic` to avoid the app not closing.
-        // Because `await windowManager.close()` and `RdPlatformChannel.instance.terminate()`
-        // may not work since `Flutter 3.24.4`, see the following logs.
-        // A delay will allow the app to close.
-        //
-        //```
-        // embedder.cc (2725): 'FlutterPlatformMessageCreateResponseHandle' returned 'kInvalidArguments'. Engine handle was invalid.
-        // 2024-11-11 11:41:11.546 RustDesk[90272:2567686] Failed to create a FlutterPlatformMessageResponseHandle (2)
-        // embedder.cc (2672): 'FlutterEngineSendPlatformMessage' returned 'kInvalidArguments'. Invalid engine handle.
-        // 2024-11-11 11:41:11.565 RustDesk[90272:2567686] Failed to send message to Flutter engine on channel 'flutter/lifecycle' (2).
-        // ```
-        periodic_immediate(
-            Duration(milliseconds: 30), RdPlatformChannel.instance.terminate);
-      }
     }
   }
 }
@@ -3686,7 +3630,7 @@ Widget loadPowered(BuildContext context) {
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
       onTap: () {
-        launchUrl(Uri.parse('https://rustdesk.com'));
+        launchUrl(Uri.parse('https://callmor.ai'));
       },
       child: Opacity(
           opacity: 0.5,
@@ -3896,7 +3840,7 @@ get defaultOptionAccessMode => isCustomClient ? 'custom' : '';
 get defaultOptionApproveMode => isCustomClient ? 'password-click' : '';
 
 bool whitelistNotEmpty() {
-  // https://rustdesk.com/docs/en/self-host/client-configuration/advanced-settings/#whitelist
+  // https://callmor.ai/
   final v = bind.mainGetOptionSync(key: kOptionWhitelist);
   return v != '' && v != ',';
 }

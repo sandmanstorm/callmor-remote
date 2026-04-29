@@ -36,12 +36,40 @@ class RelativeMouseState {
 }
 
 class MainFlutterWindow: NSWindow {
+    // Callmor: red-close button (and Cmd+W) should hide the window, not terminate the app.
+    // performClose is what the standard close button invokes; intercepting it here
+    // bypasses any third-party plugin that might call window.close() / NSApp.terminate().
+    // Cmd+Q and the tray's "Quit Callmor" still go through NSApp.terminate and exit normally.
+    override func performClose(_ sender: Any?) {
+        NSLog("[Callmor] performClose intercepted — hiding window instead of closing")
+        self.orderOut(sender)
+    }
+
     override func awakeFromNib() {
+        NSLog("[Callmor] MainFlutterWindow awakeFromNib (build %@)", "2026-04-28")
+
+        // Callmor: lock styleMask and content size BEFORE creating the
+        // FlutterViewController so the window has its final geometry from
+        // the first paint. No delayed re-locking — that caused a visible flash.
+        let target = NSSize(width: 500, height: 720)
+        self.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
+        self.titleVisibility = .hidden
+        self.titlebarAppearsTransparent = true
+        self.isMovableByWindowBackground = true
+        self.setContentSize(target)
+        self.contentMinSize = target
+        self.contentMaxSize = NSSize(width: 1200, height: 900)
+        self.center()
+        NSLog("[Callmor] locked frame=%@", NSStringFromRect(self.frame))
+
         rustdesk_core_main();
         let flutterViewController = FlutterViewController.init()
-        let windowFrame = self.frame
         self.contentViewController = flutterViewController
-        self.setFrame(windowFrame, display: true)
+
+        // Re-apply once more right after attaching the view, in case
+        // FlutterViewController re-set autoresizing constraints.
+        self.setContentSize(target)
+
         // register self method handler
         let registrar = flutterViewController.registrar(forPlugin: "RustDeskPlugin")
         setMethodHandler(registrar: registrar)
@@ -196,6 +224,49 @@ class MainFlutterWindow: NSWindow {
                 case "terminate":
                     NSApplication.shared.terminate(self)
                     result(nil)
+                case "callmorBringToFront":
+                    DispatchQueue.main.async {
+                        NSApplication.shared.activate(ignoringOtherApps: true)
+                        for w in NSApplication.shared.windows {
+                            if w is MainFlutterWindow {
+                                w.makeKeyAndOrderFront(nil)
+                            }
+                        }
+                        result(true)
+                    }
+                case "callmorCheckScreenAccess":
+                    let granted = CGPreflightScreenCaptureAccess()
+                    result(granted)
+                case "callmorRequestScreenAccess":
+                    // Triggers the OS prompt the first time; granted on later calls.
+                    let granted = CGRequestScreenCaptureAccess()
+                    result(granted)
+                case "callmorCaptureScreen":
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        let granted = CGPreflightScreenCaptureAccess()
+                        if !granted {
+                            _ = CGRequestScreenCaptureAccess()
+                            DispatchQueue.main.async { result(FlutterError(code: "PERM", message: "Screen Recording not granted", details: nil)) }
+                            return
+                        }
+                        let bounds = CGRect.infinite
+                        guard let cg = CGWindowListCreateImage(bounds,
+                                                               .optionOnScreenOnly,
+                                                               kCGNullWindowID,
+                                                               [.bestResolution]) else {
+                            DispatchQueue.main.async { result(FlutterError(code: "CAPTURE", message: "CGWindowListCreateImage returned nil", details: nil)) }
+                            return
+                        }
+                        let bitmap = NSBitmapImageRep(cgImage: cg)
+                        let props: [NSBitmapImageRep.PropertyKey: Any] = [
+                            .compressionFactor: 0.6
+                        ]
+                        guard let data = bitmap.representation(using: .jpeg, properties: props) else {
+                            DispatchQueue.main.async { result(FlutterError(code: "ENCODE", message: "JPEG encode failed", details: nil)) }
+                            return
+                        }
+                        DispatchQueue.main.async { result(FlutterStandardTypedData(bytes: data)) }
+                    }
                 case "canRecordAudio":
                     switch AVCaptureDevice.authorizationStatus(for: .audio) {
                     case .authorized:

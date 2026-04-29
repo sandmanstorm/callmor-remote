@@ -1,5 +1,5 @@
 name: flutter_hbb
-description: Callmor.ai Remote Desktop
+description: Your Remote Desktop Software
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `pub publish`. This is preferred for private packages.
@@ -51,6 +51,8 @@ dependencies:
   image: ^4.0.17
   back_button_interceptor: ^6.0.1
   flutter_rust_bridge: "1.80.1"
+  tray_manager: ^0.2.3
+  web_socket_channel: ^2.4.0
   window_manager:
     git:
       url: https://github.com/rustdesk-org/window_manager

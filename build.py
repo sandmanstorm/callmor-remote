@@ -403,15 +403,21 @@ def build_deb_from_folder(version, binary_folder):
 
 def build_flutter_dmg(version, features):
     if not skip_cargo:
-        # set minimum osx build target, now is 10.14, which is the same as the flutter xcode project
+        # set minimum osx build target, 10.15 required for Xcode 15+ SDK compatibility
+        # Use Homebrew-installed libsodium and vcpkg for libyuv/libvpx
         system2(
-            f'MACOSX_DEPLOYMENT_TARGET=10.14 cargo build --features {features} --release')
+            f'MACOSX_DEPLOYMENT_TARGET=10.15 SODIUM_LIB_DIR=/opt/homebrew/lib SODIUM_SHARED=1 VCPKG_ROOT=/Users/pasha/Desktop/rustdesk/rustdesk-master/vcpkg cargo build --features {features} --release')
     # copy dylib
     system2(
         "cp target/release/liblibrustdesk.dylib target/release/librustdesk.dylib")
     os.chdir('flutter')
-    system2('flutter build macos --release')
-    system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/')
+    # Build without codesigning (set via Release.xcconfig) to avoid iCloud xattr issues.
+    # Then clear extended attributes and sign ad-hoc for local use.
+    system2('/Users/pasha/flutter-3.24.5/bin/flutter build macos --release')
+    app_path = './build/macos/Build/Products/Release/Callmor.ai Remote.app'
+    system2(f'xattr -cr "{app_path}"')
+    system2(f'cp -rf ../target/release/service "{app_path}/Contents/MacOS/"')
+    system2(f'codesign --force --deep --sign - "{app_path}"')
     '''
     system2(
         "create-dmg --volname \"RustDesk Installer\" --window-pos 200 120 --window-size 800 400 --icon-size 100 --app-drop-link 600 185 --icon RustDesk.app 200 190 --hide-extension RustDesk.app rustdesk.dmg ./build/macos/Build/Products/Release/RustDesk.app")

@@ -1693,6 +1693,14 @@ pub fn main_get_temporary_password() -> String {
     ui_interface::temporary_password()
 }
 
+pub fn main_get_permanent_password() -> String {
+    ui_interface::permanent_password()
+}
+
+pub fn main_set_permanent_password(password: String) {
+    set_permanent_password(password);
+}
+
 pub fn main_set_permanent_password_with_result(password: String) -> bool {
     ui_interface::set_permanent_password_with_result(password)
 }

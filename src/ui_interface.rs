@@ -641,6 +641,20 @@ pub fn is_local_permanent_password_set() -> bool {
     }
 }
 
+#[inline]
+pub fn permanent_password() -> String {
+    // Hashed-only storage: plaintext is unrecoverable. See ipc::get_permanent_password.
+    crate::ipc::get_permanent_password()
+}
+
+#[inline]
+pub fn set_permanent_password(password: String) {
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    Config::set_permanent_password(&password);
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    hbb_common::allow_err!(crate::ipc::set_permanent_password(password));
+}
+
 pub fn set_permanent_password_with_result(password: String) -> bool {
     if config::Config::is_disable_change_permanent_password() {
         return false;
