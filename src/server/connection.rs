@@ -2415,6 +2415,25 @@ impl Connection {
                 self.send_login_error(crate::client::LOGIN_MSG_OFFLINE)
                     .await;
                 return false;
+            } else if hbb_common::config::LocalConfig::get_option("ferrydesk_auto_accept")
+                != "N"
+            {
+                // FerryDesk auto-accept: bypass password + click gates so
+                // dashboard-initiated connections land without prompting
+                // either side. Defaults to ON (any value other than literal
+                // "N" enables it, including the empty string from a fresh
+                // config). Disable by setting LocalConfig key
+                // `ferrydesk_auto_accept` to "N" in RustDesk2.toml options.
+                if err_msg.is_empty() {
+                    #[cfg(target_os = "linux")]
+                    self.linux_headless_handle.wait_desktop_cm_ready().await;
+                    if !self.send_logon_response_and_keep_alive().await {
+                        return false;
+                    }
+                    self.try_start_cm(lr.my_id, lr.my_name, true);
+                } else {
+                    self.send_login_error(err_msg).await;
+                }
             } else if (password::approve_mode() == ApproveMode::Click
                 && !allow_logon_screen_password)
                 || password::approve_mode() == ApproveMode::Both && !password::has_valid_password()
