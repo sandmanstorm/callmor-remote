@@ -54,6 +54,11 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
   _SvcStatus _svc = _SvcStatus.connecting;
   String _machineId = '';
   String _machineUuid = '';
+  // Temporary password surfaced for fallback when an operator can't reach
+  // the machine via the auto-accept path (e.g. ferrydesk_auto_accept=N or
+  // server-side prep flow not used). Auto-rotates per RustDesk schedule;
+  // refreshed on every status poll tick.
+  String _password = '';
   Map<String, dynamic>? _user;
   final _messages = <_Msg>[];
   final _scroll = ScrollController();
@@ -90,6 +95,10 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
         next = _SvcStatus.notReady;
       }
       if (mounted && next != _svc) setState(() => _svc = next);
+    } catch (_) {}
+    try {
+      final pw = await bind.mainGetTemporaryPassword();
+      if (mounted && pw != _password) setState(() => _password = pw);
     } catch (_) {}
   }
 
@@ -645,47 +654,74 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
 
   Widget _idStrip() {
     return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       color: _panelAlt,
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Your ID:',
-            style: TextStyle(color: Colors.white60, fontSize: 13),
+          _credentialRow(
+            label: 'Your ID:',
+            value: _machineId,
+            placeholder: '...',
+            copiedToast: 'ID copied',
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: SelectableText(
-              _machineId.isEmpty ? '...' : _machineId,
-              style: const TextStyle(
-                color: _accent,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-          _IconBtn(
-            icon: Icons.copy,
-            tooltip: 'Copy ID',
-            size: 16,
-            onTap: () async {
-              if (_machineId.isEmpty) return;
-              await Clipboard.setData(ClipboardData(text: _machineId));
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('ID copied'),
-                  duration: Duration(milliseconds: 800),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+          const SizedBox(height: 4),
+          _credentialRow(
+            label: 'Password:',
+            value: _password,
+            placeholder: '—',
+            copiedToast: 'Password copied',
           ),
         ],
       ),
+    );
+  }
+
+  Widget _credentialRow({
+    required String label,
+    required String value,
+    required String placeholder,
+    required String copiedToast,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 78,
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white60, fontSize: 13),
+          ),
+        ),
+        Expanded(
+          child: SelectableText(
+            value.isEmpty ? placeholder : value,
+            style: const TextStyle(
+              color: _accent,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        _IconBtn(
+          icon: Icons.copy,
+          tooltip: 'Copy',
+          size: 16,
+          onTap: () async {
+            if (value.isEmpty) return;
+            await Clipboard.setData(ClipboardData(text: value));
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(copiedToast),
+                duration: const Duration(milliseconds: 800),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
