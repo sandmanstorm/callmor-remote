@@ -515,7 +515,9 @@ def build_flutter_windows(version, features, skip_portable_pack):
     print(
         f'output location: {os.path.abspath(os.curdir)}/rustdesk_portable.exe')
     installer_name = f'FerryDesk-Remote-{version}-install.exe'
-    os.rename('./rustdesk_portable.exe', f'./{installer_name}')
+    # os.replace is atomic and overwrites a stale prior-version installer
+    # if one is sitting in cwd; os.rename raises FileExistsError on Windows.
+    os.replace('./rustdesk_portable.exe', f'./{installer_name}')
     # Sign the outer installer AFTER the brotli payload has been appended.
     # Authenticode tolerates the appended-data layout the portable packer
     # produces; signing happens last so the signature covers the final bytes.
