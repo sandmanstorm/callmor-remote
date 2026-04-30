@@ -1411,6 +1411,11 @@ pub fn session_start_(
                 session.use_texture_render.load(Ordering::Relaxed)
             );
             let session = (*session).clone();
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            crate::callmor_sessions::report_start_into_slot(
+                id.to_string(),
+                session.callmor_session_id.clone(),
+            );
             std::thread::spawn(move || {
                 let round = session.connection_round_state.lock().unwrap().new_round();
                 io_loop(session, round);

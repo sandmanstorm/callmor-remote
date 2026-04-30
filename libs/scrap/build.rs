@@ -177,6 +177,14 @@ fn gen_vcpkg_package(package: &str, ffi_header: &str, generated: &str, regex: &s
 
     let ffi_rs = out_dir.join(generated);
     let exact_file = src_dir.join("generated").join(generated);
+    // Prefer the vendored bindings under `generated/` if present. Newer libclang
+    // versions emit aom's large `aom_codec_enc_cfg` struct as opaque, which
+    // breaks compilation. Vendoring a known-good bindgen output sidesteps that.
+    if exact_file.exists() {
+        println!("rerun-if-changed={}", exact_file.display());
+        fs::copy(&exact_file, &ffi_rs).expect("copy vendored ffi failed");
+        return;
+    }
     generate_bindings(&ffi_header, &includes, &ffi_rs, &exact_file, regex);
 }
 

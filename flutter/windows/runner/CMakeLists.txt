@@ -38,3 +38,7 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
+
+# Override the on-disk filename so the produced exe is "Callmor.ai Remote.exe"
+# while the CMake target keeps its simple name.
+set_target_properties(${BINARY_NAME} PROPERTIES OUTPUT_NAME "${EXECUTABLE_OUTPUT_NAME}")

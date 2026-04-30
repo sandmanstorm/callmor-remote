@@ -40,6 +40,10 @@ use common::*;
 mod auth_2fa;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod callmor_heartbeat;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod callmor_sessions;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub mod callmor_screenshot;
 #[cfg(feature = "cli")]
 pub mod cli;
 #[cfg(not(target_os = "ios"))]

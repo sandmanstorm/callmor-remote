@@ -4,7 +4,7 @@ This is a fork of [rustdesk/rustdesk](https://github.com/rustdesk/rustdesk) with
 local rebrand changes:
 
 1. **Default rendezvous server + public key** baked in (via fork of
-   `hbb_common`). Clients auto-configure against `remote.callmor.ai` with no
+   `hbb_common`). Clients auto-configure against `ferrydesk.com` with no
    manual setup.
 2. **App display name, bundle ID, and Windows resource metadata** changed to
    `Callmor.ai Remote` / `ai.callmor.remote-client` / `Callmor.ai`.
@@ -32,7 +32,7 @@ You should see `libs/hbb_common` checked out from
 Verify with:
 
 ```bash
-grep callmor src/config.rs   # expect: remote.callmor.ai + Callmor's pub key
+grep callmor src/config.rs   # expect: ferrydesk.com + Callmor's pub key
 ```
 *(run this from inside `libs/hbb_common`)*
 
@@ -110,7 +110,7 @@ an EV code-signing cert before broad distribution.
 After installing the build:
 
 1. Open the app — title bar / About should say **Callmor.ai Remote**.
-2. ID server field should already say `remote.callmor.ai` (no manual config).
+2. ID server field should already say `ferrydesk.com` (no manual config).
 3. The status indicator (bottom-left) should turn green within a few seconds —
    that confirms the baked-in pub key matches the one on the running `hbbs`.
 4. Run two installed clients and connect via 9-digit ID to verify the full

@@ -65,10 +65,11 @@ fn make_tray() -> hbb_common::ResultType<()> {
         None
     };
     let open_i = MenuItem::new(translate("Open".to_owned()), true, None);
+    let exit_i = MenuItem::new(translate("Exit".to_owned()), true, None);
     if let Some(quit_i) = &quit_i {
-        tray_menu.append_items(&[&open_i, quit_i]).ok();
+        tray_menu.append_items(&[&open_i, quit_i, &exit_i]).ok();
     } else {
-        tray_menu.append_items(&[&open_i]).ok();
+        tray_menu.append_items(&[&open_i, &exit_i]).ok();
     }
     let tooltip = |count: usize| {
         if count == 0 {
@@ -168,7 +169,10 @@ fn make_tray() -> hbb_common::ResultType<()> {
         }
 
         if let Ok(event) = menu_channel.try_recv() {
-            if let Some(quit_i) = &quit_i {
+            if event.id == exit_i.id() {
+                exit_all();
+                *control_flow = ControlFlow::Exit;
+            } else if let Some(quit_i) = &quit_i {
                 if event.id == quit_i.id() {
                     /* failed in windows, seems no permission to check system process
                     if !crate::check_process("--server", false) {
@@ -258,6 +262,42 @@ async fn start_query_session_count(sender: std::sync::mpsc::Sender<Data>) {
             }
         }
         hbb_common::sleep(1.).await;
+    }
+}
+
+// Terminate all instances of the app so the user can fully quit from the tray.
+// Spawns external killers detached so the current process isn't blocked, then
+// exits self.
+fn exit_all() {
+    let exe = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_os_string()))
+        .and_then(|n| n.into_string().ok())
+        .unwrap_or_else(|| "rustdesk.exe".to_string());
+
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("taskkill")
+            .args(&["/F", "/IM", &exe])
+            .spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let stem = std::path::Path::new(&exe)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("rustdesk")
+            .to_string();
+        let _ = std::process::Command::new("pkill").arg("-f").arg(&stem).spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let stem = std::path::Path::new(&exe)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("rustdesk")
+            .to_string();
+        let _ = std::process::Command::new("pkill").arg("-f").arg(&stem).spawn();
     }
 }
 

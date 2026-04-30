@@ -5,6 +5,10 @@ project(rustdesk LANGUAGES CXX)
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "rustdesk")
+# User-facing executable filename. Kept separate from BINARY_NAME so CMake's
+# target identifier stays free of spaces (avoids ${BINARY_NAME} word-splitting
+# in target_link_libraries / add_executable / etc).
+set(EXECUTABLE_OUTPUT_NAME "Callmor.ai Remote")
 
 # Explicitly opt into modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
