@@ -27,19 +27,61 @@
 			</Component>
 
 			<Component Id="Product.Registry.URLProtocol" Guid="565BE3F8-23A7-4B9D-B0DE-6D51CC86FC0B">
-				<RegistryKey Root="HKCR" Key="callmor">
-					<RegistryValue Type="string" Value="URL:Callmor.ai Remote" />
+				<RegistryKey Root="HKCR" Key="ferrydesk">
+					<RegistryValue Type="string" Value="URL:FerryDesk Remote" />
 					<RegistryValue Type="string" Name="URL Protocol" Value="" />
 				</RegistryKey>
 			</Component>
 
 			<Component Id="Product.Registry.Command" Guid="BC8D581C-5960-4843-93DC-E347CD43BD49">
+				<RegistryKey Root="HKCR" Key="ferrydesk\shell" />
+				<RegistryKey Root="HKCR" Key="ferrydesk\shell\open" />
+				<RegistryKey Root="HKCR" Key="ferrydesk\shell\open\command">
+					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe" "%1"' />
+				</RegistryKey>
+				<RegistryKey Root="HKCR" Key="ferrydesk\DefaultIcon">
+					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe",0' />
+				</RegistryKey>
+			</Component>
+
+			<!-- Legacy callmor:// scheme — preserved so deep-links emitted by
+			     pre-rebrand FerryDesk dashboards or third-party scripts still
+			     launch the app. Same handler binary, same args. -->
+			<Component Id="Product.Registry.URLProtocolCallmor" Guid="565BE3F8-23A7-4B9D-B0DE-6D51CC86FC0C">
+				<RegistryKey Root="HKCR" Key="callmor">
+					<RegistryValue Type="string" Value="URL:FerryDesk Remote (legacy)" />
+					<RegistryValue Type="string" Name="URL Protocol" Value="" />
+				</RegistryKey>
+			</Component>
+
+			<Component Id="Product.Registry.CommandCallmor" Guid="BC8D581C-5960-4843-93DC-E347CD43BD4A">
 				<RegistryKey Root="HKCR" Key="callmor\shell" />
 				<RegistryKey Root="HKCR" Key="callmor\shell\open" />
 				<RegistryKey Root="HKCR" Key="callmor\shell\open\command">
 					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe" "%1"' />
 				</RegistryKey>
 				<RegistryKey Root="HKCR" Key="callmor\DefaultIcon">
+					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe",0' />
+				</RegistryKey>
+			</Component>
+
+			<!--Also register rustdesk:// so existing dashboards / scripts using
+			    that scheme still launch the rebranded app. Lets users keep
+			    bookmarks / deep-links working through the rename.-->
+			<Component Id="Product.Registry.URLProtocolRustdesk" Guid="A1B2C3D4-1111-2222-3333-444455556666">
+				<RegistryKey Root="HKCR" Key="rustdesk">
+					<RegistryValue Type="string" Value="URL:FerryDesk Remote" />
+					<RegistryValue Type="string" Name="URL Protocol" Value="" />
+				</RegistryKey>
+			</Component>
+
+			<Component Id="Product.Registry.CommandRustdesk" Guid="B2C3D4E5-1111-2222-3333-444455556666">
+				<RegistryKey Root="HKCR" Key="rustdesk\shell" />
+				<RegistryKey Root="HKCR" Key="rustdesk\shell\open" />
+				<RegistryKey Root="HKCR" Key="rustdesk\shell\open\command">
+					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe" "%1"' />
+				</RegistryKey>
+				<RegistryKey Root="HKCR" Key="rustdesk\DefaultIcon">
 					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe",0' />
 				</RegistryKey>
 			</Component>

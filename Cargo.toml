@@ -4,7 +4,7 @@ version = "1.4.6"
 authors = ["rustdesk <info@rustdesk.com>"]
 edition = "2021"
 build= "build.rs"
-description = "Callmor.ai Remote Desktop"
+description = "FerryDesk Remote Desktop"
 default-run = "rustdesk"
 rust-version = "1.75"
 

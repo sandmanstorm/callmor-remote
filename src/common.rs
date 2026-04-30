@@ -953,6 +953,13 @@ pub fn check_software_update() {
 // Because the url is always `https://api.rustdesk.com/version/latest`.
 #[tokio::main(flavor = "current_thread")]
 pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
+    // FerryDesk Remote: auto-update against upstream rustdesk.com is disabled.
+    // We don't yet host a release-feed of our own, and silently pulling stock
+    // RustDesk binaries would replace the rebranded build mid-flight. Always
+    // report "no update available" until a FerryDesk update endpoint exists.
+    *SOFTWARE_UPDATE_URL.lock().unwrap() = "".to_string();
+    return Ok(());
+    #[allow(unreachable_code)]
     let (request, url) =
         hbb_common::version_check_request(hbb_common::VER_TYPE_RUSTDESK_CLIENT.to_string());
     let proxy_conf = Config::get_socks();

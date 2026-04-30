@@ -39,7 +39,7 @@ pub mod flutter_ffi;
 use common::*;
 mod auth_2fa;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-mod callmor_heartbeat;
+mod ferrydesk_heartbeat;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod callmor_sessions;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]

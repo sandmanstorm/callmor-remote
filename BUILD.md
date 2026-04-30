@@ -1,4 +1,4 @@
-# Building Callmor.ai Remote
+# Building FerryDesk Remote
 
 This is a fork of [rustdesk/rustdesk](https://github.com/rustdesk/rustdesk) with two
 local rebrand changes:
@@ -7,11 +7,11 @@ local rebrand changes:
    `hbb_common`). Clients auto-configure against `ferrydesk.com` with no
    manual setup.
 2. **App display name, bundle ID, and Windows resource metadata** changed to
-   `Callmor.ai Remote` / `ai.callmor.remote-client` / `Callmor.ai`.
+   `FerryDesk Remote` / `com.ferrydesk.remote` / `FerryDesk`.
 
 Everything else — build process, dependencies, GUI strings inside the app — is
 identical to upstream. Use the **upstream RustDesk build instructions** as your
-primary reference; this document only adds Callmor-specific notes.
+primary reference; this document only adds FerryDesk-specific notes.
 
 ## Cloning
 
@@ -32,7 +32,7 @@ You should see `libs/hbb_common` checked out from
 Verify with:
 
 ```bash
-grep callmor src/config.rs   # expect: ferrydesk.com + Callmor's pub key
+grep ferrydesk src/config.rs   # expect: ferrydesk.com + FerryDesk's pub key
 ```
 *(run this from inside `libs/hbb_common`)*
 
@@ -71,13 +71,13 @@ python3 build.py --flutter
 The output binaries land in:
 
 - Windows: `flutter/build/windows/x64/runner/Release/rustdesk.exe`
-- macOS:   `flutter/build/macos/Build/Products/Release/Callmor.ai Remote.app`
+- macOS:   `flutter/build/macos/Build/Products/Release/FerryDesk Remote.app`
 
 Note the macOS `.app` bundle name reflects our `PRODUCT_NAME` change — that's
 how you confirm the rebrand applied. The Windows `.exe` filename remains
 `rustdesk.exe` (unchanged for v0; renaming the binary touches many internals).
 The Windows file properties (right-click → Properties → Details) will show
-`Callmor.ai Remote Desktop` and company `Callmor.ai`.
+`FerryDesk Remote Desktop` and company `FerryDesk`.
 
 ## Code signing
 
@@ -88,15 +88,15 @@ Apple Developer ID is configured. Sign + notarize after build:
 ```bash
 codesign --deep --force --options runtime \
   --sign "Developer ID Application: <Your Team Name> (<TEAMID>)" \
-  "flutter/build/macos/Build/Products/Release/Callmor.ai Remote.app"
+  "flutter/build/macos/Build/Products/Release/FerryDesk Remote.app"
 ```
 
 Then notarize via `notarytool`:
 
 ```bash
-xcrun notarytool submit Callmor.ai-Remote.zip \
+xcrun notarytool submit FerryDesk-Remote.zip \
   --apple-id <apple-id> --team-id <TEAMID> --password <app-specific-password> --wait
-xcrun stapler staple "Callmor.ai Remote.app"
+xcrun stapler staple "FerryDesk Remote.app"
 ```
 
 ### Windows
@@ -109,7 +109,7 @@ an EV code-signing cert before broad distribution.
 
 After installing the build:
 
-1. Open the app — title bar / About should say **Callmor.ai Remote**.
+1. Open the app — title bar / About should say **FerryDesk Remote**.
 2. ID server field should already say `ferrydesk.com` (no manual config).
 3. The status indicator (bottom-left) should turn green within a few seconds —
    that confirms the baked-in pub key matches the one on the running `hbbs`.

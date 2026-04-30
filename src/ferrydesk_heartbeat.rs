@@ -1,6 +1,6 @@
-// Callmor.ai dashboard presence heartbeat.
+// FerryDesk dashboard presence heartbeat.
 //
-// Posts the local rustdesk ID to the Callmor.ai backend every 30s so the user
+// Posts the local rustdesk ID to the FerryDesk backend every 30s so the user
 // dashboard shows the machine as online in real time. The endpoint is
 // unauthenticated by design — it accepts any rustdesk_id and silently does
 // nothing for IDs that aren't registered to a dashboard user (returns 404).
@@ -33,7 +33,7 @@ pub fn start() {
         {
             Ok(c) => c,
             Err(e) => {
-                log::warn!("callmor heartbeat: client build failed: {e}");
+                log::warn!("ferrydesk heartbeat: client build failed: {e}");
                 return;
             }
         };
@@ -54,15 +54,15 @@ pub fn start() {
                             // Token rejected by server — clear it so future
                             // calls fall back to anonymous and the UI prompts
                             // for re-login.
-                            log::debug!("callmor heartbeat: token rejected, clearing");
+                            log::debug!("ferrydesk heartbeat: token rejected, clearing");
                             LocalConfig::set_option(ACCESS_TOKEN_KEY.to_string(), String::new());
                             LocalConfig::set_option(USER_JSON_KEY.to_string(), String::new());
                         } else if !s.is_success() && s.as_u16() != 404 {
-                            log::debug!("callmor heartbeat: HTTP {s}");
+                            log::debug!("ferrydesk heartbeat: HTTP {s}");
                         }
                     }
                     Err(e) => {
-                        log::debug!("callmor heartbeat: send failed: {e}");
+                        log::debug!("ferrydesk heartbeat: send failed: {e}");
                     }
                 }
             }
