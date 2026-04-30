@@ -14,8 +14,6 @@
 typedef char** (*FUNC_RUSTDESK_CORE_MAIN)(int*);
 typedef void (*FUNC_RUSTDESK_FREE_ARGS)( char**, int);
 typedef int (*FUNC_RUSTDESK_GET_APP_NAME)(wchar_t*, int);
-/// Note: `--server`, `--service` are already handled in [core_main.rs].
-const std::vector<std::string> parameters_white_list = {"--install", "--cm"};
 
 const wchar_t* getWindowClassName();
 
@@ -49,20 +47,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     argument.erase(argument.find_last_not_of(" \n\r\t"));
   }
 
-  int args_len = 0;
-  char** c_args = rustdesk_core_main(&args_len);
-  if (!c_args)
-  {
-    std::string args_str = "";
-    for (const auto& argument : command_line_arguments) {
-      args_str += (argument + " ");
-    }
-    // std::cout << "RustDesk [" << args_str << "], core returns false, exiting without launching Flutter app." << std::endl;
-    return EXIT_SUCCESS;
-  }
-  std::vector<std::string> rust_args(c_args, c_args + args_len);
-  free_c_args(c_args, args_len);
-
+  // Resolve app_name early — needed both for the single-instance window
+  // lookup below AND for the eventual Flutter window title.
   std::wstring app_name = L"FerryDesk Remote";
   FUNC_RUSTDESK_GET_APP_NAME get_rustdesk_app_name = (FUNC_RUSTDESK_GET_APP_NAME)GetProcAddress(hInstance, "get_rustdesk_app_name");
   if (get_rustdesk_app_name) {
@@ -74,22 +60,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   // Single-instance enforcement.
   //
-  // A named mutex is acquired atomically at the kernel level, eliminating
-  // the race where two near-simultaneous launches both pass FindWindowW
-  // before either has created a window. The mutex check is skipped for
-  // known sub-process invocations (--cm, --install) which are legitimately
-  // siblings of the main UI.
-  bool allow_multiple_instances = false;
-  for (auto& whitelist_param : parameters_white_list) {
-    allow_multiple_instances =
-        allow_multiple_instances ||
-        std::find(command_line_arguments.begin(),
-                  command_line_arguments.end(),
-                  whitelist_param) != command_line_arguments.end();
-  }
+  // MUST run BEFORE rustdesk_core_main_args(): on Windows that call has a
+  // side effect — when launched without args, core_main.rs spawns a
+  // `--tray` subprocess (`should_check_start_tray`). Letting that fire on
+  // every re-launch of the main UI (e.g. from tray-icon left-click, which
+  // re-execs the EXE with no args via `run_me`) and only checking the
+  // mutex afterward would accumulate one extra tray icon per click before
+  // the duplicate main UI noticed it should bail.
+  //
+  // Sub-process invocations — anything starting with "--" — legitimately
+  // run alongside the main UI and bypass the mutex. They do their own
+  // single-instance checks via core_main.rs's `check_process` where it
+  // matters (e.g. only one --tray, only one --server).
+  bool is_subprocess_invocation = !command_line_arguments.empty() &&
+      command_line_arguments.front().rfind("--", 0) == 0;
 
   HANDLE single_instance_mutex = nullptr;
-  if (!allow_multiple_instances) {
+  if (!is_subprocess_invocation) {
     single_instance_mutex = ::CreateMutexW(
         NULL, FALSE, L"Local\\FerryDeskRemoteClient_SingleInstance");
     if (single_instance_mutex != NULL &&
@@ -97,37 +84,56 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       // Another instance owns the mutex. Surface its window. Retry briefly
       // in case the first instance is still booting and hasn't created
       // its window yet.
-      HWND hwnd = NULL;
-      for (int i = 0; i < 50 && hwnd == NULL; ++i) {
-        hwnd = ::FindWindowW(getWindowClassName(), app_name.c_str());
-        if (hwnd != NULL) break;
+      HWND existing = NULL;
+      for (int i = 0; i < 50 && existing == NULL; ++i) {
+        existing = ::FindWindowW(getWindowClassName(), app_name.c_str());
+        if (existing != NULL) break;
         ::Sleep(40);
       }
-      if (hwnd != NULL) {
+      if (existing != NULL) {
         if (!command_line_arguments.empty()) {
-          DispatchToUniLinksDesktop(hwnd);
+          DispatchToUniLinksDesktop(existing);
         } else {
-          if (::IsIconic(hwnd)) {
-            ::ShowWindow(hwnd, SW_RESTORE);
+          if (::IsIconic(existing)) {
+            ::ShowWindow(existing, SW_RESTORE);
           } else {
-            ::ShowWindow(hwnd, SW_NORMAL);
+            ::ShowWindow(existing, SW_NORMAL);
           }
-          ::SetForegroundWindow(hwnd);
+          ::SetForegroundWindow(existing);
         }
       }
-      // Do NOT close the mutex — the first instance still owns it. Closing
-      // here is fine because we own a separate handle; the first instance's
-      // handle keeps the named mutex alive.
+      // Do NOT close the named mutex object — the first instance still
+      // owns it. Closing this handle is fine because we own a separate
+      // handle; the first instance's handle keeps the named mutex alive.
       ::CloseHandle(single_instance_mutex);
       return EXIT_SUCCESS;
     }
   }
 
-  // Defense in depth: if the mutex check somehow missed (e.g. another
-  // instance crashed without releasing — Windows usually cleans this up
-  // but still), fall back to the original window-search path.
+  // We are either the first main-UI instance (holding the mutex) or a
+  // sub-process invocation. Safe to invoke rustdesk_core_main now — its
+  // `--tray` spawn side effect cannot fire twice for the main UI path,
+  // because re-launches exit above before reaching this point.
+  int args_len = 0;
+  char** c_args = rustdesk_core_main(&args_len);
+  if (!c_args)
+  {
+    std::string args_str = "";
+    for (const auto& argument : command_line_arguments) {
+      args_str += (argument + " ");
+    }
+    // std::cout << "RustDesk [" << args_str << "], core returns false, exiting without launching Flutter app." << std::endl;
+    if (single_instance_mutex) ::CloseHandle(single_instance_mutex);
+    return EXIT_SUCCESS;
+  }
+  std::vector<std::string> rust_args(c_args, c_args + args_len);
+  free_c_args(c_args, args_len);
+
+  // Defense in depth: if the mutex check missed (a previous instance
+  // crashed without releasing — Windows usually cleans this up but we
+  // guard anyway), fall back to the original window-search path.
   HWND hwnd = ::FindWindowW(getWindowClassName(), app_name.c_str());
-  if (hwnd != NULL && !allow_multiple_instances) {
+  if (hwnd != NULL && !is_subprocess_invocation) {
     if (!command_line_arguments.empty()) {
       DispatchToUniLinksDesktop(hwnd);
     } else {
@@ -192,6 +198,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     window_title = app_name;
   }
   if (!window.CreateAndShow(window_title, origin, size, !is_cm_page)) {
+      if (single_instance_mutex) ::CloseHandle(single_instance_mutex);
       return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
@@ -204,5 +211,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   }
 
   ::CoUninitialize();
+  if (single_instance_mutex) ::CloseHandle(single_instance_mutex);
   return EXIT_SUCCESS;
 }
