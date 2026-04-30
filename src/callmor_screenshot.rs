@@ -1,4 +1,4 @@
-// On-demand screenshot capture for the Callmor.ai chat path.
+// On-demand screenshot capture for the FerryDesk chat path.
 //
 // Captures one frame from the primary display via `scrap`, normalizes the
 // pixel format to RGBA, downscales to MAX_WIDTH if needed, JPEG-encodes at

@@ -1,6 +1,6 @@
-// Callmor.ai dashboard session reporting.
+// FerryDesk dashboard session reporting.
 //
-// Notifies the Callmor.ai backend when an outgoing remote-desktop session
+// Notifies the FerryDesk backend when an outgoing remote-desktop session
 // starts and ends so the web dashboard can show live connection state. Like
 // the heartbeat, calls are anonymous, fire-and-forget, and best-effort —
 // failures log at debug level and never bubble up.
@@ -21,11 +21,18 @@ use hbb_common::{
 const START_URL: &str = "https://ferrydesk.com/api/sessions/start";
 const END_URL: &str = "https://ferrydesk.com/api/sessions/end";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
-const ACCESS_TOKEN_KEY: &str = "callmor_access_token";
+const ACCESS_TOKEN_KEY: &str = "ferrydesk_access_token";
+// Read fallback so a user logged in on the pre-rebrand Callmor build keeps
+// their session. New tokens are always written to the FerryDesk key.
+const LEGACY_ACCESS_TOKEN_KEY: &str = "callmor_access_token";
 
 fn auth_header() -> Option<String> {
     let t = LocalConfig::get_option(ACCESS_TOKEN_KEY);
-    if t.is_empty() { None } else { Some(t) }
+    if !t.is_empty() {
+        return Some(t);
+    }
+    let legacy = LocalConfig::get_option(LEGACY_ACCESS_TOKEN_KEY);
+    if legacy.is_empty() { None } else { Some(legacy) }
 }
 
 fn http_client() -> &'static reqwest::Client {

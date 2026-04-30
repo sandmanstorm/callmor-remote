@@ -19,9 +19,20 @@ const _red = Color(0xFFEF4444);
 
 const _wsBase = 'wss://ferrydesk.com/ws/chat';
 const _apiBase = 'https://ferrydesk.com';
-const _kAccessTokenKey = 'callmor_access_token';
-const _kUserJsonKey = 'callmor_user_json';
-const _kInstallDeclinedKey = 'callmor_install_declined';
+const _kAccessTokenKey = 'ferrydesk_access_token';
+const _kUserJsonKey = 'ferrydesk_user_json';
+const _kInstallDeclinedKey = 'ferrydesk_install_declined';
+// Pre-rebrand keys; read-only fallback so users carrying state from the
+// Callmor build keep their session and "don't ask" install choice.
+const _kLegacyAccessTokenKey = 'callmor_access_token';
+const _kLegacyUserJsonKey = 'callmor_user_json';
+const _kLegacyInstallDeclinedKey = 'callmor_install_declined';
+
+String _readMigrated(String newKey, String legacyKey) {
+  final v = bind.mainGetLocalOption(key: newKey);
+  if (v.isNotEmpty) return v;
+  return bind.mainGetLocalOption(key: legacyKey);
+}
 
 class CallmorChatPage extends StatefulWidget {
   const CallmorChatPage({Key? key}) : super(key: key);
@@ -32,7 +43,7 @@ class CallmorChatPage extends StatefulWidget {
 
 // Rendezvous service status the dot displays.
 // Green = rustdesk service is connected to the relay/rendezvous server, which
-// is what makes this device reachable from the Callmor.ai dashboard. This is
+// is what makes this device reachable from the FerryDesk dashboard. This is
 // independent of login state and independent of the chat WebSocket — both of
 // which can be down without the device being "offline" in the meaningful sense.
 enum _SvcStatus { notReady, connecting, ready }
@@ -85,7 +96,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
   Future<void> _bootstrap() async {
     final id = await bind.mainGetMyId();
     final uuid = await bind.mainGetUuid();
-    final userJson = bind.mainGetLocalOption(key: _kUserJsonKey);
+    final userJson = _readMigrated(_kUserJsonKey, _kLegacyUserJsonKey);
     Map<String, dynamic>? user;
     if (userJson.isNotEmpty) {
       try {
@@ -115,7 +126,8 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
     } catch (_) {
       return;
     }
-    if (bind.mainGetLocalOption(key: _kInstallDeclinedKey) == 'Y') return;
+    if (_readMigrated(_kInstallDeclinedKey, _kLegacyInstallDeclinedKey) == 'Y')
+      return;
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
     final result = await showDialog<String>(
@@ -124,11 +136,11 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
       builder: (ctx) => AlertDialog(
         backgroundColor: _panel,
         title: const Text(
-          'Install Callmor.ai Remote',
+          'Install FerryDesk Remote',
           style: TextStyle(color: Colors.white),
         ),
         content: const Text(
-          'Install Callmor.ai Remote to this PC?\n\nInstalling registers the app, '
+          'Install FerryDesk Remote to this PC?\n\nInstalling registers the app, '
           'launches it automatically when you sign in, and shows a tray icon '
           'next to the clock so you can chat without keeping a window open.\n\n'
           'You can keep running it portably if you prefer.',
@@ -321,16 +333,22 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
     await bind.mainSetLocalOption(key: _kAccessTokenKey, value: token);
     await bind.mainSetLocalOption(
         key: _kUserJsonKey, value: jsonEncode(user));
+    // Clear legacy keys so they can't shadow new state if the new write fails
+    // mid-flow.
+    await bind.mainSetLocalOption(key: _kLegacyAccessTokenKey, value: '');
+    await bind.mainSetLocalOption(key: _kLegacyUserJsonKey, value: '');
     if (mounted) setState(() => _user = user);
     return (ok: true, error: null);
   }
 
   Future<void> _doLogout() async {
-    final token = bind.mainGetLocalOption(key: _kAccessTokenKey);
+    final token = _readMigrated(_kAccessTokenKey, _kLegacyAccessTokenKey);
     // Clear locally first so a slow /logout doesn't keep the user "logged in"
-    // visually if the server is unreachable.
+    // visually if the server is unreachable. Clear both new and legacy keys.
     await bind.mainSetLocalOption(key: _kAccessTokenKey, value: '');
     await bind.mainSetLocalOption(key: _kUserJsonKey, value: '');
+    await bind.mainSetLocalOption(key: _kLegacyAccessTokenKey, value: '');
+    await bind.mainSetLocalOption(key: _kLegacyUserJsonKey, value: '');
     if (mounted) setState(() => _user = null);
     if (token.isEmpty) return;
     try {
@@ -388,7 +406,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Sign in to Callmor.ai',
+                    'Sign in to FerryDesk',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -497,7 +515,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
             style: TextStyle(color: Colors.white)),
         content: Text(
           name.isEmpty
-              ? 'Sign out of Callmor.ai?'
+              ? 'Sign out of FerryDesk?'
               : 'Sign out of $name?',
           style: const TextStyle(color: Colors.white70),
         ),
@@ -577,7 +595,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
-                'Callmor.ai Remote',
+                'FerryDesk Remote',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -702,7 +720,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
             _svc == _SvcStatus.ready
                 ? 'No messages yet.\nWaiting for an operator to reach out.'
                 : _svc == _SvcStatus.connecting
-                    ? 'Connecting to Callmor.ai…'
+                    ? 'Connecting to FerryDesk…'
                     : 'Offline. The app will reconnect automatically.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white38, fontSize: 13),

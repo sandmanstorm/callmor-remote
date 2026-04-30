@@ -63,7 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   std::vector<std::string> rust_args(c_args, c_args + args_len);
   free_c_args(c_args, args_len);
 
-  std::wstring app_name = L"Callmor.ai Remote";
+  std::wstring app_name = L"FerryDesk Remote";
   FUNC_RUSTDESK_GET_APP_NAME get_rustdesk_app_name = (FUNC_RUSTDESK_GET_APP_NAME)GetProcAddress(hInstance, "get_rustdesk_app_name");
   if (get_rustdesk_app_name) {
     wchar_t app_name_buffer[512] = {0};
@@ -72,31 +72,71 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     }
   }
 
-  // Uri links dispatch
-  HWND hwnd = ::FindWindowW(getWindowClassName(), app_name.c_str());
-  if (hwnd != NULL) {
-    // Allow multiple flutter instances when being executed by parameters
-    // contained in whitelists.
-    bool allow_multiple_instances = false;
-    for (auto& whitelist_param : parameters_white_list) {
-      allow_multiple_instances =
-          allow_multiple_instances ||
-          std::find(command_line_arguments.begin(),
-                    command_line_arguments.end(),
-                    whitelist_param) != command_line_arguments.end();
-    }
-    if (!allow_multiple_instances) {
-      if (!command_line_arguments.empty()) {
-        // Dispatch command line arguments
-        DispatchToUniLinksDesktop(hwnd);
-      } else {
-        // Not called with arguments, or just open the app shortcut on desktop.
-        // So we just show the main window instead.
-        ::ShowWindow(hwnd, SW_NORMAL);
-        ::SetForegroundWindow(hwnd);
+  // Single-instance enforcement.
+  //
+  // A named mutex is acquired atomically at the kernel level, eliminating
+  // the race where two near-simultaneous launches both pass FindWindowW
+  // before either has created a window. The mutex check is skipped for
+  // known sub-process invocations (--cm, --install) which are legitimately
+  // siblings of the main UI.
+  bool allow_multiple_instances = false;
+  for (auto& whitelist_param : parameters_white_list) {
+    allow_multiple_instances =
+        allow_multiple_instances ||
+        std::find(command_line_arguments.begin(),
+                  command_line_arguments.end(),
+                  whitelist_param) != command_line_arguments.end();
+  }
+
+  HANDLE single_instance_mutex = nullptr;
+  if (!allow_multiple_instances) {
+    single_instance_mutex = ::CreateMutexW(
+        NULL, FALSE, L"Local\\FerryDeskRemoteClient_SingleInstance");
+    if (single_instance_mutex != NULL &&
+        ::GetLastError() == ERROR_ALREADY_EXISTS) {
+      // Another instance owns the mutex. Surface its window. Retry briefly
+      // in case the first instance is still booting and hasn't created
+      // its window yet.
+      HWND hwnd = NULL;
+      for (int i = 0; i < 50 && hwnd == NULL; ++i) {
+        hwnd = ::FindWindowW(getWindowClassName(), app_name.c_str());
+        if (hwnd != NULL) break;
+        ::Sleep(40);
       }
-      return EXIT_FAILURE;
+      if (hwnd != NULL) {
+        if (!command_line_arguments.empty()) {
+          DispatchToUniLinksDesktop(hwnd);
+        } else {
+          if (::IsIconic(hwnd)) {
+            ::ShowWindow(hwnd, SW_RESTORE);
+          } else {
+            ::ShowWindow(hwnd, SW_NORMAL);
+          }
+          ::SetForegroundWindow(hwnd);
+        }
+      }
+      // Do NOT close the mutex — the first instance still owns it. Closing
+      // here is fine because we own a separate handle; the first instance's
+      // handle keeps the named mutex alive.
+      ::CloseHandle(single_instance_mutex);
+      return EXIT_SUCCESS;
     }
+  }
+
+  // Defense in depth: if the mutex check somehow missed (e.g. another
+  // instance crashed without releasing — Windows usually cleans this up
+  // but still), fall back to the original window-search path.
+  HWND hwnd = ::FindWindowW(getWindowClassName(), app_name.c_str());
+  if (hwnd != NULL && !allow_multiple_instances) {
+    if (!command_line_arguments.empty()) {
+      DispatchToUniLinksDesktop(hwnd);
+    } else {
+      if (::IsIconic(hwnd)) ::ShowWindow(hwnd, SW_RESTORE);
+      else ::ShowWindow(hwnd, SW_NORMAL);
+      ::SetForegroundWindow(hwnd);
+    }
+    if (single_instance_mutex) ::CloseHandle(single_instance_mutex);
+    return EXIT_SUCCESS;
   }
 
   // Attach to console when present (e.g., 'flutter run') or create a

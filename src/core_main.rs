@@ -83,7 +83,7 @@ pub fn core_main() -> Option<Vec<String>> {
     if args.is_empty() {
         #[cfg(target_os = "linux")]
         let should_check_start_tray = crate::check_process("--server", false);
-        // Callmor: always show the tray icon for the main UI process so the user
+        // FerryDesk: always show the tray icon for the main UI process so the user
         // has a way to bring back the window after closing it (close hides to tray)
         // and an Exit option to fully quit, regardless of install/service state.
         #[cfg(target_os = "windows")]

@@ -431,23 +431,78 @@ def build_flutter_arch_manjaro(version, features):
     system2('HBB=`pwd`/.. FLUTTER=1 makepkg -f')
 
 
+def ferrydesk_signtool(target):
+    """Authenticode-sign a single PE file when signing env vars are set.
+
+    Required env vars (no-op when any is missing). The FERRYDESK_SIGN_*
+    names are preferred; the CALLMOR_SIGN_* names remain accepted so that
+    callers carrying env from the pre-rebrand build keep working.
+
+        FERRYDESK_SIGN_PFX | CALLMOR_SIGN_PFX
+            path to .pfx (or `cert:<thumbprint>` for the machine cert
+            store / HSM token)
+        FERRYDESK_SIGN_PW  | FERRYDESK_SIGN_PFX_PW |
+        CALLMOR_SIGN_PW    | CALLMOR_SIGN_PFX_PW
+            password for the .pfx (any one of these is honored)
+    Optional:
+        FERRYDESK_SIGN_TS | CALLMOR_SIGN_TS
+            timestamp server URL (default: http://timestamp.digicert.com)
+        FERRYDESK_SIGNTOOL | CALLMOR_SIGNTOOL
+            path to signtool.exe if not on PATH
+
+    SHA-256 + RFC3161 timestamp; matches Windows 10/11 Authenticode
+    requirements. Re-signing is idempotent (signtool replaces).
+    """
+    def _first_env(*names):
+        for n in names:
+            v = os.environ.get(n)
+            if v:
+                return v
+        return None
+    pfx = _first_env('FERRYDESK_SIGN_PFX', 'CALLMOR_SIGN_PFX')
+    pw = _first_env('FERRYDESK_SIGN_PW', 'FERRYDESK_SIGN_PFX_PW',
+                    'CALLMOR_SIGN_PW', 'CALLMOR_SIGN_PFX_PW')
+    if not pfx or not pw:
+        print(f'  [signtool] skipped (FERRYDESK_SIGN_PFX / _PW not set): {target}')
+        return
+    ts = _first_env('FERRYDESK_SIGN_TS', 'CALLMOR_SIGN_TS') or 'http://timestamp.digicert.com'
+    signtool = _first_env('FERRYDESK_SIGNTOOL', 'CALLMOR_SIGNTOOL') or 'signtool'
+    if pfx.startswith('cert:'):
+        # Use machine cert store / HSM token by SHA1 thumbprint
+        thumb = pfx[len('cert:'):]
+        cmd = (f'{signtool} sign /fd sha256 /td sha256 /tr "{ts}" '
+               f'/sha1 {thumb} "{target}"')
+    else:
+        cmd = (f'{signtool} sign /fd sha256 /td sha256 /tr "{ts}" '
+               f'/f "{pfx}" /p {pw} "{target}"')
+    print(f'  [signtool] signing {target}')
+    system2(cmd)
+
+
 def build_flutter_windows(version, features, skip_portable_pack):
     if not skip_cargo:
         system2(f'cargo build --features {features} --lib --release')
         if not os.path.exists("target/release/librustdesk.dll"):
             print("cargo build failed, please check rust source code.")
             exit(-1)
+    ferrydesk_signtool('target/release/librustdesk.dll')
     os.chdir('flutter')
     system2('flutter build windows --release')
     os.chdir('..')
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
                  flutter_build_dir_2)
+    # Sign the inner runtime PE files. Order matters: sign before the
+    # portable packer wraps them, so the embedded copy is already signed
+    # when the user runs the installed app.
+    ferrydesk_signtool(f'{flutter_build_dir_2}/FerryDesk Remote.exe')
+    ferrydesk_signtool(f'{flutter_build_dir_2}/librustdesk.dll')
+    ferrydesk_signtool(f'{flutter_build_dir_2}/dylib_virtual_display.dll')
     if skip_portable_pack:
         return
     os.chdir('libs/portable')
     system2('pip3 install -r requirements.txt')
     system2(
-        f'python3 ./generate.py -f ../../{flutter_build_dir_2} -o . -e ../../{flutter_build_dir_2}/rustdesk.exe')
+        f'python3 ./generate.py -f ../../{flutter_build_dir_2} -o . -e "../../{flutter_build_dir_2}/FerryDesk Remote.exe"')
     os.chdir('../..')
     if os.path.exists('./rustdesk_portable.exe'):
         os.replace('./target/release/rustdesk-portable-packer.exe',
@@ -457,9 +512,14 @@ def build_flutter_windows(version, features, skip_portable_pack):
                   './rustdesk_portable.exe')
     print(
         f'output location: {os.path.abspath(os.curdir)}/rustdesk_portable.exe')
-    os.rename('./rustdesk_portable.exe', f'./rustdesk-{version}-install.exe')
+    installer_name = f'FerryDesk-Remote-{version}-install.exe'
+    os.rename('./rustdesk_portable.exe', f'./{installer_name}')
+    # Sign the outer installer AFTER the brotli payload has been appended.
+    # Authenticode tolerates the appended-data layout the portable packer
+    # produces; signing happens last so the signature covers the final bytes.
+    ferrydesk_signtool(f'./{installer_name}')
     print(
-        f'output location: {os.path.abspath(os.curdir)}/rustdesk-{version}-install.exe')
+        f'output location: {os.path.abspath(os.curdir)}/{installer_name}')
 
 
 def main():

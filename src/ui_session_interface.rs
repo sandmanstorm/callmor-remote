@@ -72,7 +72,7 @@ pub struct Session<T: InvokeUiSession> {
     pub reconnect_count: Arc<AtomicUsize>,
     pub last_audit_note: Arc<Mutex<String>>,
     pub audit_guid: Arc<Mutex<String>>,
-    // Callmor.ai dashboard session id, populated when the backend acks
+    // FerryDesk dashboard session id, populated when the backend acks
     // /api/sessions/start. Read on close to fire /api/sessions/end.
     pub callmor_session_id: Arc<Mutex<Option<String>>>,
 }

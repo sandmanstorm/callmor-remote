@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Callmor.ai" "\0"
-            VALUE "FileDescription", "Callmor.ai Remote Desktop" "\0"
+            VALUE "CompanyName", "FerryDesk" "\0"
+            VALUE "FileDescription", "FerryDesk Remote Desktop" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Callmor.ai Remote" "\0"
-            VALUE "LegalCopyright", "Copyright © 2026 Callmor.ai. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Callmor.ai Remote.exe" "\0"
-            VALUE "ProductName", "Callmor.ai Remote" "\0"
+            VALUE "InternalName", "FerryDesk Remote" "\0"
+            VALUE "LegalCopyright", "Copyright © 2026 FerryDesk. All rights reserved." "\0"
+            VALUE "OriginalFilename", "FerryDesk Remote.exe" "\0"
+            VALUE "ProductName", "FerryDesk Remote" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
