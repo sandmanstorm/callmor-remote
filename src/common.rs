@@ -1017,9 +1017,35 @@ pub fn is_rustdesk() -> bool {
     hbb_common::config::APP_NAME.read().unwrap().eq("RustDesk")
 }
 
+// Primary URL scheme registered by the agent. Hardcoded (not derived from
+// APP_NAME) because APP_NAME can contain spaces — "FerryDesk Remote" — which
+// makes a derived scheme invalid (no spaces allowed in URL schemes).
+pub const URL_SCHEME: &str = "ferrydesk";
+
+// Legacy URL schemes kept registered alongside the primary so
+// pre-rebrand dashboard deep-links and standard rustdesk:// links still
+// launch this build.
+pub const LEGACY_URL_SCHEMES: &[&str] = &["callmor", "rustdesk"];
+
 #[inline]
 pub fn get_uri_prefix() -> String {
-    format!("{}://", get_app_name().to_lowercase())
+    format!("{URL_SCHEME}://")
+}
+
+/// All schemes the agent recognizes as incoming uni-links — primary +
+/// legacy. Used by the launch-arg detection in core_main.
+pub fn get_all_uri_prefixes() -> Vec<String> {
+    let mut v = Vec::with_capacity(1 + LEGACY_URL_SCHEMES.len());
+    v.push(format!("{URL_SCHEME}://"));
+    for s in LEGACY_URL_SCHEMES {
+        v.push(format!("{s}://"));
+    }
+    v
+}
+
+/// True if `arg` looks like a uni-link in any of our known schemes.
+pub fn is_known_uri(arg: &str) -> bool {
+    get_all_uri_prefixes().iter().any(|p| arg.starts_with(p))
 }
 
 #[cfg(target_os = "macos")]

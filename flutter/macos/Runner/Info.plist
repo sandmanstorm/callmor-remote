@@ -29,7 +29,9 @@
 			<string>ai.callmor.remote-client</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>ferrydesk</string>
 				<string>callmor</string>
+				<string>rustdesk</string>
 			</array>
 		</dict>
 	</array>
