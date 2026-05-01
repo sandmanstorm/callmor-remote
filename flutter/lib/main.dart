@@ -417,6 +417,14 @@ WindowOptions getHiddenTitleBarWindowOptions(
   if (kUseCompatibleUiMode) {
     defaultTitleBarStyle = TitleBarStyle.normal;
   }
+  // FerryDesk on macOS uses the native title bar — title text "FerryDesk
+  // Remote" + native red/yellow/green traffic-light controls. Don't render
+  // the Windows-style in-window minimize/close (those are guarded by
+  // Platform.isWindows in the chat header). On Windows we keep the title bar
+  // hidden because Windows has no system-managed window chrome the same way.
+  if (isMacOS && isMainWindow) {
+    defaultTitleBarStyle = TitleBarStyle.normal;
+  }
   return WindowOptions(
     size: size,
     center: center,

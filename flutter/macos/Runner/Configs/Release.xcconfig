@@ -1,2 +1,8 @@
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"
+// Disable codesigning during xcodebuild — extended attributes get added by
+// the build (notarized service binary copy etc.) and break codesign. We
+// run codesign --force --deep manually after xattr -cr.
+CODE_SIGN_IDENTITY =
+CODE_SIGNING_REQUIRED = NO
+CODE_SIGNING_ALLOWED = NO

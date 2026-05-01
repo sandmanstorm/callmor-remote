@@ -656,18 +656,25 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
               onLoginTap: _showLoginDialog,
               onLogoutTap: _showLogoutMenu,
             ),
-            const SizedBox(width: 4),
-            _IconBtn(
-              icon: Icons.remove,
-              tooltip: 'Minimize',
-              onTap: () => windowManager.minimize(),
-            ),
-            const SizedBox(width: 4),
-            _IconBtn(
-              icon: Icons.close,
-              tooltip: 'Hide to tray',
-              onTap: () => windowManager.hide(),
-            ),
+            // Windows uses in-window minimize/hide because it has no system-
+            // managed window chrome. macOS has native traffic-light controls
+            // at top-left for the same actions, so rendering custom in-window
+            // ones there is redundant and visually noisy. Keep the
+            // Platform.isWindows guard.
+            if (Platform.isWindows) ...[
+              const SizedBox(width: 4),
+              _IconBtn(
+                icon: Icons.remove,
+                tooltip: 'Minimize',
+                onTap: () => windowManager.minimize(),
+              ),
+              const SizedBox(width: 4),
+              _IconBtn(
+                icon: Icons.close,
+                tooltip: 'Hide to tray',
+                onTap: () => windowManager.hide(),
+              ),
+            ],
           ],
         ),
       ),
