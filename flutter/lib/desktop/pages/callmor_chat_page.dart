@@ -59,6 +59,9 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
   // server-side prep flow not used). Auto-rotates per RustDesk schedule;
   // refreshed on every status poll tick.
   String _password = '';
+  // App version (from Cargo.toml via FFI). One-shot fetch on bootstrap;
+  // doesn't change at runtime.
+  String _version = '';
   Map<String, dynamic>? _user;
   final _messages = <_Msg>[];
   final _scroll = ScrollController();
@@ -105,6 +108,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
   Future<void> _bootstrap() async {
     final id = await bind.mainGetMyId();
     final uuid = await bind.mainGetUuid();
+    final version = await bind.mainGetVersion();
     final userJson = _readMigrated(_kUserJsonKey, _kLegacyUserJsonKey);
     Map<String, dynamic>? user;
     if (userJson.isNotEmpty) {
@@ -117,6 +121,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
       _machineId = id;
       _machineUuid = uuid;
       _user = user;
+      _version = version;
     });
     _connect();
     _maybeOfferInstall();
@@ -602,14 +607,31 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
           children: [
             Image.asset('assets/icon.png', width: 28, height: 28),
             const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'FerryDesk Remote',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  const Text(
+                    'FerryDesk Remote',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (_version.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'v$_version',
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             Container(
@@ -662,6 +684,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
           _credentialRow(
             label: 'Your ID:',
             value: _machineId,
+            displayValue: _formatId(_machineId),
             placeholder: '...',
             copiedToast: 'ID copied',
           ),
@@ -680,9 +703,15 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
   Widget _credentialRow({
     required String label,
     required String value,
+    String? displayValue,
     required String placeholder,
     required String copiedToast,
   }) {
+    final shown = value.isEmpty
+        ? placeholder
+        : (displayValue != null && displayValue.isNotEmpty
+            ? displayValue
+            : value);
     return Row(
       children: [
         SizedBox(
@@ -694,7 +723,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
         ),
         Expanded(
           child: SelectableText(
-            value.isEmpty ? placeholder : value,
+            shown,
             style: const TextStyle(
               color: _accent,
               fontSize: 17,
@@ -710,6 +739,9 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
           size: 16,
           onTap: () async {
             if (value.isEmpty) return;
+            // Always copy the raw value (e.g. "243610825"), not the
+            // display-formatted "243 610 825" — operators paste this
+            // straight into a RustDesk peer-id field.
             await Clipboard.setData(ClipboardData(text: value));
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -723,6 +755,14 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
         ),
       ],
     );
+  }
+
+  // Format a 9-digit RustDesk ID as "XXX XXX XXX" for readability.
+  // Returns the input unchanged for any other length so partial / placeholder
+  // states still render (e.g. while the FFI fetch is in flight).
+  String _formatId(String id) {
+    if (id.length != 9) return id;
+    return '${id.substring(0, 3)} ${id.substring(3, 6)} ${id.substring(6, 9)}';
   }
 
   Color _statusColor() {
