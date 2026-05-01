@@ -184,6 +184,7 @@ void runMainApp(bool startService) async {
       await _initFerryDeskTray();
       await _ensureLoginAtBoot();
       await _disableMicByDefault();
+      _promptMacPermissionsOnce();
     }
   });
 }
@@ -295,16 +296,38 @@ Future<void> _ensureLoginAtBoot() async {
   }
 }
 
+// Trigger the three macOS TCC system prompts (Screen Recording, Input
+// Monitoring, Accessibility) on the first launch so the user can grant them
+// without waiting for the operator-side connection to fail. macOS shows each
+// prompt only once per bundle until granted; calling with prompt=true after
+// the user has already granted is a cheap no-op. After grants, the user
+// must quit and relaunch the app for permissions to take effect — TCC ties
+// access to a specific code-signing identity at process start.
+void _promptMacPermissionsOnce() {
+  try {
+    bind.mainIsCanScreenRecording(prompt: true);
+    bind.mainIsCanInputMonitoring(prompt: true);
+    bind.mainIsProcessTrusted(prompt: true);
+  } catch (e) {
+    debugPrint('FerryDesk perm prompt failed: $e');
+  }
+}
+
 // Mute Mac's outgoing mic by default so we don't get a feedback loop when
 // the operator's voice plays through the Mac speakers and gets re-captured
 // back to the operator. Operator-side audio (Mac hearing the operator)
 // still flows. Sets the option only on first run; if user re-enables it
 // in settings later, we don't reset.
+//
+// `enable-audio` is read by Connection::is_permission_enabled_locally via
+// Config::get_option (NOT LocalConfig). Use mainSetOption, not
+// mainSetLocalOption — they write to different .toml files and the audio
+// gate doesn't see the LocalConfig store.
 Future<void> _disableMicByDefault() async {
   try {
     const k = 'ferrydesk_mic_default_applied';
     if (bind.mainGetLocalOption(key: k) == 'Y') return;
-    await bind.mainSetLocalOption(key: 'enable-audio', value: 'N');
+    await bind.mainSetOption(key: 'enable-audio', value: 'N');
     await bind.mainSetLocalOption(key: k, value: 'Y');
     debugPrint('FerryDesk: mic capture disabled by default');
   } catch (e) {
