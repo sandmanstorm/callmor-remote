@@ -676,84 +676,43 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
 
   Widget _idStrip() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: _panelAlt,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          _credentialRow(
-            label: 'Your ID:',
-            value: _machineId,
-            displayValue: _formatId(_machineId),
-            placeholder: '...',
-            copiedToast: 'ID copied',
+          const Text(
+            'ID:',
+            style: TextStyle(color: Colors.white60, fontSize: 12),
           ),
-          const SizedBox(height: 4),
-          _credentialRow(
-            label: 'Password:',
-            value: _password,
-            placeholder: '—',
-            copiedToast: 'Password copied',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _credentialRow({
-    required String label,
-    required String value,
-    String? displayValue,
-    required String placeholder,
-    required String copiedToast,
-  }) {
-    final shown = value.isEmpty
-        ? placeholder
-        : (displayValue != null && displayValue.isNotEmpty
-            ? displayValue
-            : value);
-    return Row(
-      children: [
-        SizedBox(
-          width: 78,
-          child: Text(
-            label,
-            style: const TextStyle(color: Colors.white60, fontSize: 13),
-          ),
-        ),
-        Expanded(
-          child: SelectableText(
-            shown,
+          const SizedBox(width: 6),
+          SelectableText(
+            _machineId.isEmpty ? '...' : _formatId(_machineId),
             style: const TextStyle(
               color: _accent,
-              fontSize: 17,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
+              letterSpacing: 1.2,
               fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
-        ),
-        _IconBtn(
-          icon: Icons.copy,
-          tooltip: 'Copy',
-          size: 16,
-          onTap: () async {
-            if (value.isEmpty) return;
-            // Always copy the raw value (e.g. "243610825"), not the
-            // display-formatted "243 610 825" — operators paste this
-            // straight into a RustDesk peer-id field.
-            await Clipboard.setData(ClipboardData(text: value));
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(copiedToast),
-                duration: const Duration(milliseconds: 800),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
-        ),
-      ],
+          const SizedBox(width: 20),
+          const Text(
+            'Password:',
+            style: TextStyle(color: Colors.white60, fontSize: 12),
+          ),
+          const SizedBox(width: 6),
+          SelectableText(
+            _password.isEmpty ? '—' : _password,
+            style: const TextStyle(
+              color: _accent,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
