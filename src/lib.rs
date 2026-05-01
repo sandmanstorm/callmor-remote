@@ -41,6 +41,8 @@ mod auth_2fa;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod ferrydesk_heartbeat;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod ferrydesk_machine_info;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod callmor_sessions;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub mod callmor_screenshot;

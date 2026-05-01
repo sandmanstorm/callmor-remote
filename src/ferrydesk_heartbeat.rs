@@ -61,25 +61,10 @@ pub fn start() {
         loop {
             let id = Config::get_id();
             if !id.is_empty() {
-                // Map Rust's std::env::consts::OS values to the platform
-                // enum the dashboard schema accepts (win|mac|linux|android|ios).
-                let platform = match std::env::consts::OS {
-                    "windows" => "win",
-                    "macos" => "mac",
-                    "linux" => "linux",
-                    "android" => "android",
-                    "ios" => "ios",
-                    other => other,
-                };
-                // hbb_common re-exports whoami; use its hostname() — already
-                // resolves cross-platform without adding a dep.
-                let hostname = hbb_common::whoami::hostname();
-                let body = serde_json::json!({
-                    "rustdesk_id": id,
-                    "platform": platform,
-                    "version": env!("CARGO_PKG_VERSION"),
-                    "hostname": hostname,
-                });
+                let body = crate::ferrydesk_machine_info::full_payload(
+                    &id,
+                    env!("CARGO_PKG_VERSION"),
+                );
                 let mut req = client.post(HEARTBEAT_URL).json(&body);
                 let token = read_token();
                 if !token.is_empty() {
