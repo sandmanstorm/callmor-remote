@@ -22,6 +22,7 @@ import 'package:flutter_hbb/utils/multi_window_manager.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:window_manager/window_manager.dart';
 
 import 'common.dart';
@@ -179,7 +180,136 @@ void runMainApp(bool startService) async {
     await windowManager.setMinimumSize(const Size(420, 560));
     // Do not use `windowManager.setResizable()` here.
     setResizable(!bind.isIncomingOnly());
+    if (isMacOS) {
+      await _initFerryDeskTray();
+      await _ensureLoginAtBoot();
+      await _disableMicByDefault();
+    }
   });
+}
+
+class _FerryDeskTrayListener with tray.TrayListener {
+  @override
+  void onTrayIconMouseDown() async {
+    final visible = await windowManager.isVisible();
+    if (visible) {
+      windowManager.hide();
+    } else {
+      windowManager.show();
+      windowManager.focus();
+    }
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    tray.trayManager.popUpContextMenu();
+  }
+
+  @override
+  void onTrayMenuItemClick(tray.MenuItem menuItem) async {
+    switch (menuItem.key) {
+      case 'open':
+        windowManager.show();
+        windowManager.focus();
+        break;
+      case 'hide':
+        windowManager.hide();
+        break;
+      case 'quit':
+        await tray.trayManager.destroy();
+        windowManager.setPreventClose(false);
+        await windowManager.close();
+        break;
+    }
+  }
+}
+
+final _ferryDeskTrayListener = _FerryDeskTrayListener();
+
+Future<void> _initFerryDeskTray() async {
+  try {
+    await tray.trayManager.setIcon('assets/tray_icon_small.png');
+    await tray.trayManager.setToolTip('FerryDesk Remote');
+    await tray.trayManager.setContextMenu(tray.Menu(items: [
+      tray.MenuItem(key: 'open', label: 'Open FerryDesk'),
+      tray.MenuItem(key: 'hide', label: 'Hide'),
+      tray.MenuItem.separator(),
+      tray.MenuItem(key: 'quit', label: 'Quit FerryDesk'),
+    ]));
+    tray.trayManager.addListener(_ferryDeskTrayListener);
+  } catch (e) {
+    debugPrint('FerryDesk tray init failed: $e');
+  }
+}
+
+// Drop a LaunchAgent plist into ~/Library/LaunchAgents that points at the
+// installed FerryDesk Remote.app. macOS launchd will start the app at every
+// user login. Idempotent — re-writes the plist each launch with the current
+// path, so moving the app between /Applications and ~/Downloads (or copying
+// over from a new build) keeps the auto-start pointing at the right binary.
+// Skipped automatically when the app is running from a build directory or
+// portable location to avoid auto-starting non-installed copies.
+Future<void> _ensureLoginAtBoot() async {
+  try {
+    final exe = Platform.resolvedExecutable;
+    if (!exe.contains('/Applications/')) {
+      // Only register the canonical /Applications copy. Build/dev runs and
+      // ~/Downloads copies don't auto-start; that would surprise people.
+      return;
+    }
+    final home = Platform.environment['HOME'];
+    if (home == null) return;
+    final plistPath =
+        '$home/Library/LaunchAgents/com.ferrydesk.remote.plist';
+    final plistBody = '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ferrydesk.remote</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$exe</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <false/>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+</dict>
+</plist>
+''';
+    final dir = Directory('$home/Library/LaunchAgents');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    final f = File(plistPath);
+    final existing = await f.exists() ? await f.readAsString() : '';
+    if (existing != plistBody) {
+      await f.writeAsString(plistBody);
+      debugPrint('FerryDesk: wrote LaunchAgent at $plistPath');
+    }
+  } catch (e) {
+    debugPrint('FerryDesk login-at-boot setup failed: $e');
+  }
+}
+
+// Mute Mac's outgoing mic by default so we don't get a feedback loop when
+// the operator's voice plays through the Mac speakers and gets re-captured
+// back to the operator. Operator-side audio (Mac hearing the operator)
+// still flows. Sets the option only on first run; if user re-enables it
+// in settings later, we don't reset.
+Future<void> _disableMicByDefault() async {
+  try {
+    const k = 'ferrydesk_mic_default_applied';
+    if (bind.mainGetLocalOption(key: k) == 'Y') return;
+    await bind.mainSetLocalOption(key: 'enable-audio', value: 'N');
+    await bind.mainSetLocalOption(key: k, value: 'Y');
+    debugPrint('FerryDesk: mic capture disabled by default');
+  } catch (e) {
+    debugPrint('FerryDesk mic-off default failed: $e');
+  }
 }
 
 void runMobileApp() async {
