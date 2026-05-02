@@ -2,12 +2,24 @@ name: Flutter Tag Build
 
 on:
   workflow_dispatch:
+    inputs:
+      variant:
+        description: 'FerryDesk product variant (cargo feature flag)'
+        required: false
+        default: 'paid-operator'
+        type: choice
+        options:
+          - paid-operator
+          - free-standalone
+          - paid-host
   push:
-    tags:
+     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - '[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-[0-9]+'
       - '[0-9]+.[0-9]+.[0-9]+-[0-9]+'
+      - 'ferrydesk-v[0-9]+.[0-9]+.[0-9]+'
+      - 'ferrydesk-v[0-9]+.[0-9]+.[0-9]+-[a-z0-9]+'
 
 jobs:
   run-flutter-tag-build:
@@ -16,3 +28,4 @@ jobs:
     with:
       upload-artifact: true
       upload-tag: ${{ github.ref_name }}
+      variant: ${{ inputs.variant || 'paid-operator' }}
