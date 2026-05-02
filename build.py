@@ -284,6 +284,19 @@ def get_features(args):
     if osx:
         if args.screencapturekit:
             features.append('screencapturekit')
+    # FerryDesk product variant — picked by CI via the FERRYDESK_VARIANT
+    # env var (set from the workflow_dispatch dropdown). Adds the matching
+    # cargo feature on top of the platform features above. paid-operator is
+    # already in default-features (Cargo.toml line ~50), so we only inject
+    # paid-host or free-standalone explicitly. Unknown values are ignored —
+    # build falls back to default-features (paid-operator) so a typo
+    # produces a paid-operator binary, not a failure.
+    variant = os.environ.get('FERRYDESK_VARIANT', '').strip()
+    if variant in ('free-standalone', 'paid-host'):
+        features.append(variant)
+    elif variant and variant != 'paid-operator':
+        print(f"FERRYDESK_VARIANT: unrecognized value '{variant}', "
+              f"falling back to paid-operator (default-features)")
     print("features:", features)
     return features
 
