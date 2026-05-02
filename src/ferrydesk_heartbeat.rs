@@ -23,6 +23,7 @@ use hbb_common::{
 };
 
 const HEARTBEAT_URL: &str = "https://ferrydesk.com/api/machines/heartbeat";
+#[cfg(feature = "paid-host")]
 const CLAIM_URL: &str = "https://ferrydesk.com/api/installers/claim";
 const INTERVAL: Duration = Duration::from_secs(30);
 const STARTUP_DELAY: Duration = Duration::from_secs(5);
@@ -38,6 +39,7 @@ const LEGACY_USER_JSON_KEY: &str = "callmor_user_json";
 // failed against). A boolean flag would block re-installs that ship a
 // fresh per-tenant token; storing the token itself lets a re-install
 // with a different token re-claim. Empty string ⇒ never claimed.
+#[cfg(feature = "paid-host")]
 const INSTALL_CLAIMED_TOKEN_KEY: &str = "ferrydesk_install_claimed_token";
 
 fn read_token() -> String {
@@ -59,6 +61,7 @@ fn clear_session() {
 /// Mirrors the comma-delimited tokenizer in `custom_server.rs` but runs at
 /// runtime against `current_exe()`. Returns "" on any failure or when no
 /// install_token marker is present (generic / non-tenanted install).
+#[cfg(feature = "paid-host")]
 fn read_install_token_from_exe() -> String {
     let exe = match std::env::current_exe() {
         Ok(p) => p,
@@ -100,6 +103,14 @@ fn read_install_token_from_exe() -> String {
 /// token. Stores the claimed token in `LocalConfig` on terminal outcomes
 /// (success OR known-bad: 404/409/410) so transient failures retry on
 /// the next heartbeat tick.
+///
+/// On a successful claim, also sets the local RustDesk permanent password
+/// from the response body's `permanent_password` field. Without this step,
+/// the operator's dashboard knows password X (server-side) while the host's
+/// RustDesk accepts only its random session-default → incoming connections
+/// from the dashboard get rejected. The backend started echoing the
+/// password in the claim response in commit b85e9f9.
+#[cfg(feature = "paid-host")]
 async fn try_claim_install(client: &reqwest::Client, rustdesk_id: &str) {
     let token = read_install_token_from_exe();
     if token.is_empty() {
@@ -121,7 +132,47 @@ async fn try_claim_install(client: &reqwest::Client, rustdesk_id: &str) {
         Ok(resp) => {
             let code = resp.status().as_u16();
             if resp.status().is_success() {
-                log::info!("ferrydesk install claim: ok");
+                // Pull the permanent password out of the response and set
+                // it locally before marking the token consumed. If the
+                // server didn't include one (older backend), we still mark
+                // claimed — the dashboard's password reveal endpoint is
+                // the manual fallback in that case.
+                match resp.json::<serde_json::Value>().await {
+                    Ok(body) => {
+                        if let Some(pw) =
+                            body.get("permanent_password").and_then(|v| v.as_str())
+                        {
+                            if !pw.is_empty() {
+                                if let Err(e) =
+                                    crate::ipc::set_permanent_password(pw.to_string())
+                                {
+                                    log::warn!(
+                                        "ferrydesk install claim: set_permanent_password failed: {e}"
+                                    );
+                                } else {
+                                    log::info!(
+                                        "ferrydesk install claim: ok, password set"
+                                    );
+                                }
+                            } else {
+                                log::info!(
+                                    "ferrydesk install claim: ok (server returned empty password)"
+                                );
+                            }
+                        } else {
+                            log::info!(
+                                "ferrydesk install claim: ok (no password in response — older backend?)"
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        // Body wasn't JSON or transport error reading it.
+                        // Claim itself was 2xx so still mark consumed.
+                        log::warn!(
+                            "ferrydesk install claim: 2xx but body unreadable: {e}"
+                        );
+                    }
+                }
                 LocalConfig::set_option(
                     INSTALL_CLAIMED_TOKEN_KEY.to_string(),
                     token,
@@ -169,7 +220,10 @@ pub fn start() {
                 // machine in the right tenant from its very first row in
                 // the dashboard rather than after a manual transfer. Self-
                 // gates via LocalConfig, so this is a near-noop after the
-                // first successful claim.
+                // first successful claim. Compiled in only for paid-host
+                // — paid-operator binaries have no install_token in their
+                // filename so this would always early-return anyway.
+                #[cfg(feature = "paid-host")]
                 try_claim_install(&client, &id).await;
 
                 let body = crate::ferrydesk_machine_info::full_payload(

@@ -27,7 +27,28 @@ use_samplerate = ["samplerate"]
 use_rubato = ["rubato"]
 use_dasp = ["dasp"]
 flutter = ["flutter_rust_bridge"]
-default = ["use_dasp"]
+
+# FerryDesk product variants (mutually exclusive — pick exactly one).
+#
+#   paid-operator    : full-feature, logged-in operator viewer.
+#                      Heartbeats, registers URL schemes, syncs address book.
+#   paid-host        : silent unattended host agent.
+#                      Heartbeats, parses install_token from filename, claims
+#                      into tenant on first run, sets permanent password
+#                      from the claim response.
+#   free-standalone  : anonymous public download — relay-only, no /api/*
+#                      traffic, hardcoded FerryDesk brand.
+#
+# Default keeps paid-operator on so existing CI invocations (no
+# --no-default-features) continue producing the v1.5.x-style binary. To build
+# a specific variant cleanly:
+#
+#   cargo build --release --no-default-features --features use_dasp,<variant>,inline,vram,hwcodec
+free-standalone = []
+paid-operator = []
+paid-host = []
+
+default = ["use_dasp", "paid-operator"]
 hwcodec = ["scrap/hwcodec"]
 vram = ["scrap/vram"]
 mediacodec = ["scrap/mediacodec"]

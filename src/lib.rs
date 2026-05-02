@@ -38,9 +38,18 @@ pub mod flutter;
 pub mod flutter_ffi;
 use common::*;
 mod auth_2fa;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
+// Heartbeat + machine-info modules are only compiled into variants that
+// talk to the FerryDesk web backend. The free-standalone variant is
+// relay-only and has no /api/* surface to call.
+#[cfg(all(
+    not(any(target_os = "android", target_os = "ios")),
+    any(feature = "paid-operator", feature = "paid-host"),
+))]
 mod ferrydesk_heartbeat;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[cfg(all(
+    not(any(target_os = "android", target_os = "ios")),
+    any(feature = "paid-operator", feature = "paid-host"),
+))]
 mod ferrydesk_machine_info;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod callmor_sessions;
