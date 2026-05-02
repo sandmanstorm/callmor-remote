@@ -9,6 +9,10 @@ on:
       upload-tag:
         type: string
         default: "nightly"
+      variant:
+        description: 'FerryDesk product variant — picks the cargo feature flag'
+        type: string
+        default: "paid-operator"
 
 # NOTE: F-Droid builder script 'flutter/build_fdroid.sh' reads environment
 # variables from this workflow!
@@ -363,7 +367,27 @@ jobs:
           python3 res/inline-sciter.py
           # Patch sciter x86
           sed -i 's/branch = "dyn"/branch = "dyn_x86"/g' ./Cargo.toml
-          cargo build --features inline,vram,hwcodec --release --bins
+          # FerryDesk variant selector. paid-operator is the historical
+          # default (matches every v1.5.x build that came before), so
+          # default-features stays on. The other two variants are mutually
+          # exclusive with paid-operator and need --no-default-features so
+          # they don't accidentally drag in the operator feature flag.
+          VARIANT="${{ inputs.variant }}"
+          case "$VARIANT" in
+            paid-operator|"")
+              cargo build --features inline,vram,hwcodec --release --bins
+              ;;
+            free-standalone|paid-host)
+              cargo build --no-default-features \
+                --features use_dasp,inline,vram,hwcodec,$VARIANT \
+                --release --bins
+              ;;
+            *)
+              echo "::error::Unknown variant: $VARIANT (allowed: paid-operator, free-standalone, paid-host)"
+              exit 1
+              ;;
+          esac
+
           mkdir -p ./Release
           mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
           curl -LJ -o ./Release/sciter.dll https://github.com/c-smile/sciter-sdk/raw/master/bin.win/x32/sciter.dll
@@ -396,7 +420,7 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         uses: actions/upload-artifact@master
         with:
-          name: rustdesk-unsigned-windows-${{ matrix.job.arch }}
+          name: rustdesk-unsigned-windows-${{ matrix.job.arch }}-${{ inputs.variant || 'paid-operator' }}
           path: Release
 
       - name: Sign rustdesk files
@@ -415,7 +439,7 @@ jobs:
           python3 ./generate.py -f ../../Release/ -o . -e ../../Release/rustdesk.exe
           popd
           mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}-sciter.exe
+          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/ferrydesk-${{ inputs.variant || 'paid-operator' }}-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
 
       - name: Sign rustdesk self-extracted file
         if: env.UPLOAD_ARTIFACT == 'true' && env.SIGN_BASE_URL != '-2'
