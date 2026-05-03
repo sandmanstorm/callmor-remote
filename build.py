@@ -284,14 +284,27 @@ def get_features(args):
     if osx:
         if args.screencapturekit:
             features.append('screencapturekit')
-    # FerryDesk product variant — picked by CI via the FERRYDESK_VARIANT
-    # env var (set from the workflow_dispatch dropdown). Adds the matching
-    # cargo feature on top of the platform features above. paid-operator is
-    # already in default-features (Cargo.toml line ~50), so we only inject
-    # paid-host or free-standalone explicitly. Unknown values are ignored —
-    # build falls back to default-features (paid-operator) so a typo
-    # produces a paid-operator binary, not a failure.
+    # FerryDesk product variant. Resolved in priority order:
+    #   1. FERRYDESK_VARIANT env var (preferred — workflow_dispatch dropdown
+    #      threaded via `env:` on the Build rustdesk step in flutter-build.yml).
+    #   2. Contents of `.ferrydesk-variant` file at the repo root (fallback
+    #      for environments where the workflow can't be edited; commit the
+    #      file via web UI to switch variants on the next build).
+    #   3. Empty → falls through to default-features = paid-operator.
+    # Adds the matching cargo feature on top of the platform features above.
+    # paid-operator is already in default-features (Cargo.toml line ~50), so
+    # we only inject paid-host or free-standalone explicitly. Unknown values
+    # warn and fall back to paid-operator so a typo doesn't break the build.
     variant = os.environ.get('FERRYDESK_VARIANT', '').strip()
+    if not variant:
+        try:
+            with open('.ferrydesk-variant', 'r', encoding='utf-8') as f:
+                variant = f.read().strip()
+            if variant:
+                print(f"FERRYDESK_VARIANT: read '{variant}' from "
+                      f".ferrydesk-variant file")
+        except FileNotFoundError:
+            pass
     if variant in ('free-standalone', 'paid-host'):
         features.append(variant)
     elif variant and variant != 'paid-operator':
