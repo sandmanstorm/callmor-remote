@@ -261,6 +261,7 @@ jobs:
 
       - name: Build msi
         if: env.UPLOAD_ARTIFACT == 'true'
+        continue-on-error: true
         run: |
           pushd ./res/msi
           python preprocess.py --arp -d ../../rustdesk
