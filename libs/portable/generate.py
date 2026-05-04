@@ -14,15 +14,74 @@ encoding = 'utf-8'
 # output: {path: (compressed_data, file_md5)}
 
 
+def _read_ferrydesk_variant() -> str:
+    """Resolve the FerryDesk variant from env var or .ferrydesk-variant
+    file at repo root. Searches up to 5 parent dirs from cwd because
+    generate.py runs from libs/portable/ during CI but might be invoked
+    from other locations during local builds."""
+    env = os.environ.get('FERRYDESK_VARIANT', '').strip()
+    if env:
+        return env
+    cur = os.path.abspath(os.curdir)
+    for _ in range(5):
+        candidate = os.path.join(cur, '.ferrydesk-variant')
+        if os.path.isfile(candidate):
+            try:
+                with open(candidate, 'r', encoding='utf-8') as f:
+                    return f.read().strip()
+            except Exception:
+                pass
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    return ''
+
+
+def _should_exclude_for_free_standalone(rel_path: str) -> bool:
+    """Files bundled by default for paid variants but unwanted in the
+    free-standalone build:
+      - WindowInjection.dll: DLL injection helper for clipboard / file
+        copy-paste features. Frequently flagged by Windows Defender /
+        EDR on locked-down machines, causing the wrapper to silently
+        exit on launch (observed in rc2/rc3/rc4 test runs).
+      - printer_driver_adapter.dll + drivers/RustDeskPrinterDriver/...:
+        printer redirection feature. Unsigned driver fails signature
+        check on hardened Windows; not needed for the free variant.
+      - usbmmidd_v2/: virtual display driver. Same signing issue;
+        not needed for free.
+    The v1.5.8 binary that ships and runs cleanly on the test machine
+    didn't include any of these — confirmed via strings diff. Stripping
+    them brings the free-standalone bundle to v1.5.8-equivalent content.
+    Paid variants keep them (operators paying for the product expect
+    printer + virtual-display features)."""
+    norm = rel_path.replace('\\', '/').lstrip('./')
+    if norm in ('WindowInjection.dll', 'printer_driver_adapter.dll'):
+        return True
+    if norm.startswith('drivers/') or norm.startswith('usbmmidd_v2/'):
+        return True
+    return False
+
+
 def generate_md5_table(folder: str, level) -> dict:
     res: dict = dict()
     curdir = os.curdir
     os.chdir(folder)
+    variant = _read_ferrydesk_variant()
+    if variant == 'free-standalone':
+        print(
+            "[generate.py] FERRYDESK_VARIANT=free-standalone — "
+            "filtering printer driver / virtual display / WindowInjection "
+            "DLLs out of the bundle."
+        )
     for root, _, files in os.walk('.'):
         # remove ./
         for f in files:
             md5_generator = md5()
             full_path = os.path.join(root, f)
+            if variant == 'free-standalone' and _should_exclude_for_free_standalone(full_path):
+                print(f"  SKIP (free-standalone): {full_path}")
+                continue
             print(f"Processing {full_path}...")
             f = open(full_path, "rb")
             content = f.read()
