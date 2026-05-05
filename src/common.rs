@@ -1022,10 +1022,23 @@ pub fn is_rustdesk() -> bool {
 // makes a derived scheme invalid (no spaces allowed in URL schemes).
 pub const URL_SCHEME: &str = "ferrydesk";
 
-// Legacy URL schemes kept registered alongside the primary so
-// pre-rebrand dashboard deep-links and standard rustdesk:// links still
-// launch this build.
+// Legacy URL schemes recognized at runtime when this binary is launched
+// with a uni-link. Kept liberal so the agent always responds to whatever
+// scheme an old dashboard / shortcut throws at it. This is the
+// RECOGNITION list — distinct from the system-wide install registration
+// list below.
 pub const LEGACY_URL_SCHEMES: &[&str] = &["ferrydesk", "rustdesk"];
+
+// URL schemes registered as system handlers at install time. The
+// free-standalone variant claims rustdesk:// so it can act as a drop-in
+// for stock RustDesk. paid-operator and paid-host do NOT claim
+// rustdesk://, so a Basic/Pro install can coexist with a stock RustDesk
+// install on the same machine without stealing the Connect-click
+// handler.
+#[cfg(feature = "free-standalone")]
+pub const INSTALL_REGISTERED_URL_SCHEMES: &[&str] = &["ferrydesk", "rustdesk"];
+#[cfg(not(feature = "free-standalone"))]
+pub const INSTALL_REGISTERED_URL_SCHEMES: &[&str] = &["ferrydesk"];
 
 #[inline]
 pub fn get_uri_prefix() -> String {

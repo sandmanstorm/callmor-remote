@@ -1447,7 +1447,7 @@ fn get_after_install(
     reg add HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System /f /v SoftwareSASGeneration /t REG_DWORD /d 1
     ",
         create_service = get_create_service(&exe),
-        legacy_url_schemes = crate::common::LEGACY_URL_SCHEMES
+        legacy_url_schemes = crate::common::INSTALL_REGISTERED_URL_SCHEMES
             .iter()
             .map(|s| format!(
                 "reg add HKEY_CLASSES_ROOT\\{s} /f
