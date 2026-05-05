@@ -45,8 +45,8 @@
 			<ComponentRef Id="Product.Registry.CommandPlay" />
 			<ComponentRef Id="Product.Registry.URLProtocol" />
 			<ComponentRef Id="Product.Registry.Command" />
-			<ComponentRef Id="Product.Registry.URLProtocolCallmor" />
-			<ComponentRef Id="Product.Registry.CommandCallmor" />
+			<ComponentRef Id="Product.Registry.URLProtocolFerryDesk" />
+			<ComponentRef Id="Product.Registry.CommandFerryDesk" />
 			<ComponentRef Id="Product.Registry.URLProtocolRustdesk" />
 			<ComponentRef Id="Product.Registry.CommandRustdesk" />
 			<ComponentRef Id="Product.Registry.UninstallApp" />

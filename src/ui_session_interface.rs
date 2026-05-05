@@ -74,7 +74,7 @@ pub struct Session<T: InvokeUiSession> {
     pub audit_guid: Arc<Mutex<String>>,
     // FerryDesk dashboard session id, populated when the backend acks
     // /api/sessions/start. Read on close to fire /api/sessions/end.
-    pub callmor_session_id: Arc<Mutex<Option<String>>>,
+    pub ferrydesk_session_id: Arc<Mutex<Option<String>>>,
 }
 
 #[derive(Clone)]

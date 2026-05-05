@@ -268,12 +268,12 @@ pub fn session_close(session_id: SessionID) {
         crate::keyboard::release_remote_keys("map");
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         if let Some(sid) = session
-            .callmor_session_id
+            .ferrydesk_session_id
             .lock()
             .ok()
             .and_then(|mut s| s.take())
         {
-            crate::callmor_sessions::report_end(sid);
+            crate::ferrydesk_sessions::report_end(sid);
         }
         session.close_event_stream(session_id);
         session.close();
@@ -1299,13 +1299,13 @@ pub fn main_get_uuid() -> String {
 // Capture a screenshot of the primary display, JPEG-encoded at q=60,
 // resized to ≤1280px wide, returned as a base64 string for embedding in
 // the chat WebSocket payload. Returns "" on failure (UAC screen, etc.).
-pub fn callmor_capture_screenshot() -> String {
+pub fn ferrydesk_capture_screenshot() -> String {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
-        match crate::callmor_screenshot::capture_jpeg_base64() {
+        match crate::ferrydesk_screenshot::capture_jpeg_base64() {
             Ok(s) => s,
             Err(e) => {
-                hbb_common::log::debug!("callmor screenshot capture failed: {e}");
+                hbb_common::log::debug!("ferrydesk screenshot capture failed: {e}");
                 String::new()
             }
         }

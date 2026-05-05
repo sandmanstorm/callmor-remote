@@ -30,11 +30,6 @@ const STARTUP_DELAY: Duration = Duration::from_secs(5);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 const ACCESS_TOKEN_KEY: &str = "ferrydesk_access_token";
 const USER_JSON_KEY: &str = "ferrydesk_user_json";
-// Pre-rebrand keys — read as fallback so users carrying state from the
-// Callmor build keep their session. New writes always go to the FerryDesk
-// keys; the legacy keys are only ever cleared.
-const LEGACY_ACCESS_TOKEN_KEY: &str = "callmor_access_token";
-const LEGACY_USER_JSON_KEY: &str = "callmor_user_json";
 // Persist the LAST install_token we successfully claimed (or terminally
 // failed against). A boolean flag would block re-installs that ship a
 // fresh per-tenant token; storing the token itself lets a re-install
@@ -43,18 +38,12 @@ const LEGACY_USER_JSON_KEY: &str = "callmor_user_json";
 const INSTALL_CLAIMED_TOKEN_KEY: &str = "ferrydesk_install_claimed_token";
 
 fn read_token() -> String {
-    let v = LocalConfig::get_option(ACCESS_TOKEN_KEY);
-    if !v.is_empty() {
-        return v;
-    }
-    LocalConfig::get_option(LEGACY_ACCESS_TOKEN_KEY)
+    LocalConfig::get_option(ACCESS_TOKEN_KEY)
 }
 
 fn clear_session() {
     LocalConfig::set_option(ACCESS_TOKEN_KEY.to_string(), String::new());
     LocalConfig::set_option(USER_JSON_KEY.to_string(), String::new());
-    LocalConfig::set_option(LEGACY_ACCESS_TOKEN_KEY.to_string(), String::new());
-    LocalConfig::set_option(LEGACY_USER_JSON_KEY.to_string(), String::new());
 }
 
 /// Extract the `install_token=...` segment from this process's .exe filename.

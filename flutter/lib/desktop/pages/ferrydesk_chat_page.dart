@@ -23,10 +23,10 @@ const _kAccessTokenKey = 'ferrydesk_access_token';
 const _kUserJsonKey = 'ferrydesk_user_json';
 const _kInstallDeclinedKey = 'ferrydesk_install_declined';
 // Pre-rebrand keys; read-only fallback so users carrying state from the
-// Callmor build keep their session and "don't ask" install choice.
-const _kLegacyAccessTokenKey = 'callmor_access_token';
-const _kLegacyUserJsonKey = 'callmor_user_json';
-const _kLegacyInstallDeclinedKey = 'callmor_install_declined';
+// FerryDesk build keep their session and "don't ask" install choice.
+const _kLegacyAccessTokenKey = 'ferrydesk_access_token';
+const _kLegacyUserJsonKey = 'ferrydesk_user_json';
+const _kLegacyInstallDeclinedKey = 'ferrydesk_install_declined';
 
 String _readMigrated(String newKey, String legacyKey) {
   final v = bind.mainGetLocalOption(key: newKey);
@@ -34,11 +34,11 @@ String _readMigrated(String newKey, String legacyKey) {
   return bind.mainGetLocalOption(key: legacyKey);
 }
 
-class CallmorChatPage extends StatefulWidget {
-  const CallmorChatPage({Key? key}) : super(key: key);
+class FerryDeskChatPage extends StatefulWidget {
+  const FerryDeskChatPage({Key? key}) : super(key: key);
 
   @override
-  State<CallmorChatPage> createState() => _CallmorChatPageState();
+  State<FerryDeskChatPage> createState() => _FerryDeskChatPageState();
 }
 
 // Rendezvous service status the dot displays.
@@ -48,7 +48,7 @@ class CallmorChatPage extends StatefulWidget {
 // which can be down without the device being "offline" in the meaningful sense.
 enum _SvcStatus { notReady, connecting, ready }
 
-class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
+class _FerryDeskChatPageState extends State<FerryDeskChatPage> with WindowListener {
   WebSocketChannel? _ws;
   bool _wsConnected = false;
   _SvcStatus _svc = _SvcStatus.connecting;
@@ -263,7 +263,7 @@ class _CallmorChatPageState extends State<CallmorChatPage> with WindowListener {
     if (requestId.isEmpty) return;
     final ws = _ws;
     if (ws == null) return;
-    final b64 = await bind.callmorCaptureScreenshot();
+    final b64 = await bind.ferrydeskCaptureScreenshot();
     if (b64.isEmpty) {
       ws.sink.add(jsonEncode({
         'type': 'screenshot_response',

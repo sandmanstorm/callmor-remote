@@ -187,9 +187,9 @@ class _InstallPageBodyState extends State<_InstallPageBody>
                           InkWell(
                             hoverColor: Colors.transparent,
                             onTap: () => launchUrlString(
-                                'https://callmor.ai/privacy'),
+                                'https://ferrydesk.com/privacy'),
                             child: Tooltip(
-                              message: 'https://callmor.ai/privacy',
+                              message: 'https://ferrydesk.com/privacy',
                               child: Row(children: [
                                 Icon(Icons.launch_outlined, size: 16)
                                     .marginOnly(right: 5),

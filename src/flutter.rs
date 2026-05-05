@@ -1412,9 +1412,9 @@ pub fn session_start_(
             );
             let session = (*session).clone();
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
-            crate::callmor_sessions::report_start_into_slot(
+            crate::ferrydesk_sessions::report_start_into_slot(
                 id.to_string(),
-                session.callmor_session_id.clone(),
+                session.ferrydesk_session_id.clone(),
             );
             std::thread::spawn(move || {
                 let round = session.connection_round_state.lock().unwrap().new_round();

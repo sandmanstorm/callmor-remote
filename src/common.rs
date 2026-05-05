@@ -1025,7 +1025,7 @@ pub const URL_SCHEME: &str = "ferrydesk";
 // Legacy URL schemes kept registered alongside the primary so
 // pre-rebrand dashboard deep-links and standard rustdesk:// links still
 // launch this build.
-pub const LEGACY_URL_SCHEMES: &[&str] = &["callmor", "rustdesk"];
+pub const LEGACY_URL_SCHEMES: &[&str] = &["ferrydesk", "rustdesk"];
 
 #[inline]
 pub fn get_uri_prefix() -> String {

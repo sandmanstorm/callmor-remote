@@ -89,7 +89,7 @@ fn grab_frame(capturer: &mut Capturer) -> ResultType<(Vec<u8>, u32, u32)> {
                 if Instant::now() > deadline {
                     return Err(anyhow!("capture failed: {e}"));
                 }
-                log::debug!("callmor screenshot: transient frame error: {e}");
+                log::debug!("ferrydesk screenshot: transient frame error: {e}");
                 std::thread::sleep(Duration::from_millis(20));
             }
         }

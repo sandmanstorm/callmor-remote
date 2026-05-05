@@ -44,23 +44,23 @@
 				</RegistryKey>
 			</Component>
 
-			<!-- Legacy callmor:// scheme — preserved so deep-links emitted by
+			<!-- Legacy ferrydesk:// scheme — preserved so deep-links emitted by
 			     pre-rebrand FerryDesk dashboards or third-party scripts still
 			     launch the app. Same handler binary, same args. -->
-			<Component Id="Product.Registry.URLProtocolCallmor" Guid="565BE3F8-23A7-4B9D-B0DE-6D51CC86FC0C">
-				<RegistryKey Root="HKCR" Key="callmor">
+			<Component Id="Product.Registry.URLProtocolFerryDesk" Guid="565BE3F8-23A7-4B9D-B0DE-6D51CC86FC0C">
+				<RegistryKey Root="HKCR" Key="ferrydesk">
 					<RegistryValue Type="string" Value="URL:FerryDesk Remote (legacy)" />
 					<RegistryValue Type="string" Name="URL Protocol" Value="" />
 				</RegistryKey>
 			</Component>
 
-			<Component Id="Product.Registry.CommandCallmor" Guid="BC8D581C-5960-4843-93DC-E347CD43BD4A">
-				<RegistryKey Root="HKCR" Key="callmor\shell" />
-				<RegistryKey Root="HKCR" Key="callmor\shell\open" />
-				<RegistryKey Root="HKCR" Key="callmor\shell\open\command">
+			<Component Id="Product.Registry.CommandFerryDesk" Guid="BC8D581C-5960-4843-93DC-E347CD43BD4A">
+				<RegistryKey Root="HKCR" Key="ferrydesk\shell" />
+				<RegistryKey Root="HKCR" Key="ferrydesk\shell\open" />
+				<RegistryKey Root="HKCR" Key="ferrydesk\shell\open\command">
 					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe" "%1"' />
 				</RegistryKey>
-				<RegistryKey Root="HKCR" Key="callmor\DefaultIcon">
+				<RegistryKey Root="HKCR" Key="ferrydesk\DefaultIcon">
 					<RegistryValue Type="string" Value='"[INSTALLFOLDER_INNER]$(var.Product).exe",0' />
 				</RegistryKey>
 			</Component>

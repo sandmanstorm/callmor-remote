@@ -3686,7 +3686,7 @@ Widget loadPowered(BuildContext context) {
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
       onTap: () {
-        launchUrl(Uri.parse('https://callmor.ai'));
+        launchUrl(Uri.parse('https://ferrydesk.com'));
       },
       child: Opacity(
           opacity: 0.5,

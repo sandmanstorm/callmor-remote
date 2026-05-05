@@ -16,10 +16,10 @@ specific notes baked in.
 ## Cloning
 
 The fork uses a custom `hbb_common` submodule (sandmanstorm/hbb_common, branch
-`callmor`). Always clone recursively:
+`ferrydesk`). Always clone recursively:
 
 ```bash
-git clone --recursive https://github.com/sandmanstorm/callmor-remote.git
+git clone --recursive https://github.com/sandmanstorm/ferrydesk-remote.git
 ```
 
 If you forgot `--recursive`:
@@ -98,7 +98,7 @@ matches the verified working path.
 # the wrong SDK. Always invoke the pinned binary by its absolute path.
 export PATH="/Users/pasha/flutter-3.24.5/bin:/opt/homebrew/opt/ruby/bin:/Users/pasha/.gem/ruby/4.0.0/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-cd /path/to/callmor-remote
+cd /path/to/ferrydesk-remote
 
 # 1. Build the Rust dylib + service binary (~3 min on M-series)
 MACOSX_DEPLOYMENT_TARGET=10.15 \

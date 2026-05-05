@@ -52,9 +52,9 @@ mod ferrydesk_heartbeat;
 ))]
 mod ferrydesk_machine_info;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-mod callmor_sessions;
+mod ferrydesk_sessions;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub mod callmor_screenshot;
+pub mod ferrydesk_screenshot;
 #[cfg(feature = "cli")]
 pub mod cli;
 #[cfg(not(target_os = "ios"))]

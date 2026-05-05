@@ -461,19 +461,19 @@ def ferrydesk_signtool(target):
     """Authenticode-sign a single PE file when signing env vars are set.
 
     Required env vars (no-op when any is missing). The FERRYDESK_SIGN_*
-    names are preferred; the CALLMOR_SIGN_* names remain accepted so that
+    names are preferred; the FERRYDESK_SIGN_* names remain accepted so that
     callers carrying env from the pre-rebrand build keep working.
 
-        FERRYDESK_SIGN_PFX | CALLMOR_SIGN_PFX
+        FERRYDESK_SIGN_PFX | FERRYDESK_SIGN_PFX
             path to .pfx (or `cert:<thumbprint>` for the machine cert
             store / HSM token)
         FERRYDESK_SIGN_PW  | FERRYDESK_SIGN_PFX_PW |
-        CALLMOR_SIGN_PW    | CALLMOR_SIGN_PFX_PW
+        FERRYDESK_SIGN_PW    | FERRYDESK_SIGN_PFX_PW
             password for the .pfx (any one of these is honored)
     Optional:
-        FERRYDESK_SIGN_TS | CALLMOR_SIGN_TS
+        FERRYDESK_SIGN_TS | FERRYDESK_SIGN_TS
             timestamp server URL (default: http://timestamp.digicert.com)
-        FERRYDESK_SIGNTOOL | CALLMOR_SIGNTOOL
+        FERRYDESK_SIGNTOOL | FERRYDESK_SIGNTOOL
             path to signtool.exe if not on PATH
 
     SHA-256 + RFC3161 timestamp; matches Windows 10/11 Authenticode
@@ -485,14 +485,14 @@ def ferrydesk_signtool(target):
             if v:
                 return v
         return None
-    pfx = _first_env('FERRYDESK_SIGN_PFX', 'CALLMOR_SIGN_PFX')
+    pfx = _first_env('FERRYDESK_SIGN_PFX', 'FERRYDESK_SIGN_PFX')
     pw = _first_env('FERRYDESK_SIGN_PW', 'FERRYDESK_SIGN_PFX_PW',
-                    'CALLMOR_SIGN_PW', 'CALLMOR_SIGN_PFX_PW')
+                    'FERRYDESK_SIGN_PW', 'FERRYDESK_SIGN_PFX_PW')
     if not pfx or not pw:
         print(f'  [signtool] skipped (FERRYDESK_SIGN_PFX / _PW not set): {target}')
         return
-    ts = _first_env('FERRYDESK_SIGN_TS', 'CALLMOR_SIGN_TS') or 'http://timestamp.digicert.com'
-    signtool = _first_env('FERRYDESK_SIGNTOOL', 'CALLMOR_SIGNTOOL') or 'signtool'
+    ts = _first_env('FERRYDESK_SIGN_TS', 'FERRYDESK_SIGN_TS') or 'http://timestamp.digicert.com'
+    signtool = _first_env('FERRYDESK_SIGNTOOL', 'FERRYDESK_SIGNTOOL') or 'signtool'
     if pfx.startswith('cert:'):
         # Use machine cert store / HSM token by SHA1 thumbprint
         thumb = pfx[len('cert:'):]

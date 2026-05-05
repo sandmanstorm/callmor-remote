@@ -22,17 +22,10 @@ const START_URL: &str = "https://ferrydesk.com/api/sessions/start";
 const END_URL: &str = "https://ferrydesk.com/api/sessions/end";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 const ACCESS_TOKEN_KEY: &str = "ferrydesk_access_token";
-// Read fallback so a user logged in on the pre-rebrand Callmor build keeps
-// their session. New tokens are always written to the FerryDesk key.
-const LEGACY_ACCESS_TOKEN_KEY: &str = "callmor_access_token";
 
 fn auth_header() -> Option<String> {
     let t = LocalConfig::get_option(ACCESS_TOKEN_KEY);
-    if !t.is_empty() {
-        return Some(t);
-    }
-    let legacy = LocalConfig::get_option(LEGACY_ACCESS_TOKEN_KEY);
-    if legacy.is_empty() { None } else { Some(legacy) }
+    if t.is_empty() { None } else { Some(t) }
 }
 
 fn http_client() -> &'static reqwest::Client {
@@ -45,7 +38,7 @@ fn http_client() -> &'static reqwest::Client {
     })
 }
 
-// One shared runtime for all callmor-session work, lazily created on first
+// One shared runtime for all ferrydesk-session work, lazily created on first
 // call. Reusing it (rather than spawning a fresh runtime per request) keeps
 // overhead negligible and lets callers fire from sync FFI context where no
 // ambient tokio runtime exists.
@@ -55,9 +48,9 @@ fn rt() -> &'static Runtime {
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(1)
             .enable_all()
-            .thread_name("callmor-sessions")
+            .thread_name("ferrydesk-sessions")
             .build()
-            .expect("callmor_sessions: failed to build runtime")
+            .expect("ferrydesk_sessions: failed to build runtime")
     })
 }
 
@@ -92,19 +85,19 @@ pub fn report_start(target_id: String) -> oneshot::Receiver<Option<String>> {
                             .and_then(|s| s.as_str())
                             .map(|s| s.to_string()),
                         Err(e) => {
-                            log::debug!("callmor sessions: parse /start body failed: {e}");
+                            log::debug!("ferrydesk sessions: parse /start body failed: {e}");
                             None
                         }
                     }
                 } else {
                     if status != reqwest::StatusCode::NO_CONTENT {
-                        log::debug!("callmor sessions: /start HTTP {status}");
+                        log::debug!("ferrydesk sessions: /start HTTP {status}");
                     }
                     None
                 }
             }
             Err(e) => {
-                log::debug!("callmor sessions: /start failed: {e}");
+                log::debug!("ferrydesk sessions: /start failed: {e}");
                 None
             }
         };
@@ -125,7 +118,7 @@ pub fn report_end(session_id: String) {
             req = req.bearer_auth(&t);
         }
         if let Err(e) = req.send().await {
-            log::debug!("callmor sessions: /end failed: {e}");
+            log::debug!("ferrydesk sessions: /end failed: {e}");
         }
     });
 }
