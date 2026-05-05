@@ -1683,6 +1683,24 @@ fn get_before_uninstall(kill_self: bool) -> String {
     } else {
         format!(" /FI \"PID ne {}\"", get_current_pid())
     };
+    // Iterate every URL scheme this variant might have registered (ferrydesk +
+    // rustdesk for free-standalone). reg delete is idempotent — a scheme that
+    // wasn't registered just emits "key not found" and continues.
+    let scheme_deletes: String = crate::common::INSTALL_REGISTERED_URL_SCHEMES
+        .iter()
+        .flat_map(|s| {
+            [
+                format!("reg delete HKEY_CLASSES_ROOT\\.{s} /f"),
+                format!("reg delete HKEY_CLASSES_ROOT\\{s} /f"),
+                // Per-user fallback path uni_links_desktop sometimes uses
+                // (HKCU\Software\Classes\<scheme>) — see the comment in
+                // install_me.
+                format!("reg delete HKEY_CURRENT_USER\\Software\\Classes\\.{s} /f"),
+                format!("reg delete HKEY_CURRENT_USER\\Software\\Classes\\{s} /f"),
+            ]
+        })
+        .collect::<Vec<_>>()
+        .join("\n    ");
     format!(
         "
     chcp 65001
@@ -1692,6 +1710,7 @@ fn get_before_uninstall(kill_self: bool) -> String {
     taskkill /F /IM {app_name}.exe{filter}
     reg delete HKEY_CLASSES_ROOT\\.{ext} /f
     reg delete HKEY_CLASSES_ROOT\\{ext} /f
+    {scheme_deletes}
     netsh advfirewall firewall delete rule name=\"{app_name} Service\"
     ",
         broker_exe = WIN_TOPMOST_INJECTED_PROCESS_EXE,
@@ -1738,6 +1757,10 @@ fn get_uninstall(kill_self: bool, uninstall_printer: bool) -> String {
     if exist \"{start_menu}\" rd /s /q \"{start_menu}\"
     if exist \"%PUBLIC%\\Desktop\\{app_name}.lnk\" del /f /q \"%PUBLIC%\\Desktop\\{app_name}.lnk\"
     if exist \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\" del /f /q \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\"
+    if exist \"%APPDATA%\\{app_name}\" rd /s /q \"%APPDATA%\\{app_name}\"
+    if exist \"%LOCALAPPDATA%\\{app_name}\" rd /s /q \"%LOCALAPPDATA%\\{app_name}\"
+    for /D %%U in (\"%SystemDrive%\\Users\\*\") do if exist \"%%U\\AppData\\Roaming\\{app_name}\" rd /s /q \"%%U\\AppData\\Roaming\\{app_name}\"
+    for /D %%U in (\"%SystemDrive%\\Users\\*\") do if exist \"%%U\\AppData\\Local\\{app_name}\" rd /s /q \"%%U\\AppData\\Local\\{app_name}\"
     ",
         before_uninstall=get_before_uninstall(kill_self),
         uninstall_amyuni_idd=get_uninstall_amyuni_idd(),
